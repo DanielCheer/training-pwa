@@ -1,7 +1,8 @@
 :root{
   --bg:#060A0F; --card:#0D1720; --card2:#122230; --bd:#1B3040;
   --cy:#00E5D0; --or:#FF5C2E; --gr:#3DF08C; --pu:#A78BFA; --ye:#FFC93C; --rd:#FF4757;
-  --tx:#E9F5F2; --mu:#5E8490; --dim:#2A4454;
+  --tx:#E9F5F2; --mu:#5E8490; --dim:#4F6B7A; /* --dim: faint TEXT, 3.2:1 on --card (was #2A4454, 1.8:1) */
+  --track:#2A4454; /* empty bar/timeline track (not text) */
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);color:var(--tx);font-family:-apple-system,system-ui,sans-serif;overscroll-behavior-y:contain}
@@ -14,6 +15,7 @@ h1{font-size:25px;font-weight:800;letter-spacing:-.4px}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:17px;margin-bottom:12px}
 .stitle{font-size:12.5px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:12px}
 button{font-family:inherit;cursor:pointer;border:none}
+.vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}/* visually hidden, still read by screen readers */
 
 /* nav */
 nav{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;display:flex;background:#0A121A;border-top:1px solid var(--bd);padding:7px 8px calc(8px + env(safe-area-inset-bottom));z-index:50;transform:translateZ(0);will-change:transform}/* translateZ+will-change: promote the fixed bar to its own GPU layer so iOS standalone-PWA momentum scroll can't leave it floating mid-screen (v75) */
@@ -30,7 +32,7 @@ nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;st
 /* stat bars */
 .sb{margin-bottom:11px}
 .sbt{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
-.sbg{height:5px;background:var(--dim);border-radius:3px}
+.sbg{height:5px;background:var(--track);border-radius:3px}
 .sbf{height:100%;border-radius:3px}
 .gsrc{color:var(--dim);font-size:11px}/* where a goal bar's number came from (weigh-in date / scan date) */
 
@@ -42,7 +44,7 @@ nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;st
 
 /* timeline */
 .tl{display:flex;gap:4px;margin:10px 0 6px}
-.tlw{flex:1;height:9px;border-radius:4px;background:var(--dim);position:relative}
+.tlw{flex:1;height:9px;border-radius:4px;background:var(--track);position:relative}
 .tlw.now{outline:2px solid var(--cy);outline-offset:2px}
 .tlx{display:flex;justify-content:space-between;font-size:11px;color:var(--mu)}
 
@@ -58,7 +60,7 @@ nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;st
 /* exercise rows */
 .ex{background:var(--card);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;overflow:hidden}
 .exh{display:flex;align-items:center;gap:10px;padding:12px 13px;cursor:pointer}
-.chk{width:23px;height:23px;min-width:23px;border-radius:50%;border:2px solid var(--dim);display:flex;align-items:center;justify-content:center;font-size:13px;color:#00110F;background:transparent}
+.chk{width:23px;height:23px;min-width:23px;padding:0;border-radius:50%;border:2px solid var(--dim);display:flex;align-items:center;justify-content:center;font-size:13px;color:#00110F;background:transparent}
 .chk.on{background:var(--gr);border-color:var(--gr)}
 .exn{flex:1}
 .exn .n{font-size:16px;font-weight:700;line-height:1.3}

@@ -43,7 +43,7 @@ function renderBW(){
   const dtxt=delta==null?"":(delta>=0?`+${delta}`:delta);
   const dcol=delta==null?"var(--mu)":delta<0?"#7BB8D4":delta>0.75?"var(--or)":"var(--gr)";
   if(e.d===_bwEditD)return `<div class="logentry">${bwEditForm(e)}</div>`;
-  return `<div class="logentry"><div style="flex:1"><div class="logdate" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px" onclick="editBW(${i})">${e.d}</div><div class="logtxt"><b style="font-size:16px">${e.w}</b> lb${delta!=null?` <span style="color:${dcol};font-weight:700;font-size:12.5px">${dtxt} lb</span>`:""}</div></div><button class="del" onclick="delBW(${i})">×</button></div>`
+  return `<div class="logentry"><div style="flex:1"><div class="logdate" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px" onclick="editBW(${i})">${e.d}</div><div class="logtxt"><b style="font-size:16px">${e.w}</b> lb${delta!=null?` <span style="color:${dcol};font-weight:700;font-size:12.5px">${dtxt} lb</span>`:""}</div></div><button class="del" aria-label="Delete weigh-in" onclick="delBW(${i})">×</button></div>`
  }).join(""):`<div class="small" style="margin-top:2px">No weigh-ins yet — log Sunday morning's number here.</div>`}
 
 /* Cardio & sauna log — stairmaster/bike/sauna minutes, localStorage only, this phone.
@@ -64,7 +64,7 @@ function renderCardio(){
  if(!log.length){el.innerHTML='<div class="small" style="margin-top:6px">Nothing logged yet.</div>';return}
  const byDate={};for(const e of log)(byDate[e.date]=byDate[e.date]||[]).push(e);
  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
- el.innerHTML=dates.map(d=>`<div style="margin-top:9px"><div class="logdate">${fmtHistDate(d)} <span style="color:var(--dim);font-weight:600">${d}</span></div>${byDate[d].map(e=>`<div class="logentry" style="padding:5px 10px"><span style="flex:1" class="small"><b style="color:var(--tx)">${escHtml(e.activity)}</b> · ${e.min} min</span><button class="del" onclick="delCardio('${e.id}')">×</button></div>`).join('')}</div>`).join('');
+ el.innerHTML=dates.map(d=>`<div style="margin-top:9px"><div class="logdate">${fmtHistDate(d)} <span style="color:var(--dim);font-weight:600">${d}</span></div>${byDate[d].map(e=>`<div class="logentry" style="padding:5px 10px"><span style="flex:1" class="small"><b style="color:var(--tx)">${escHtml(e.activity)}</b> · ${e.min} min</span><button class="del" aria-label="Delete entry" onclick="delCardio('${e.id}')">×</button></div>`).join('')}</div>`).join('');
 }
 
 function loadFoodLog(){try{return JSON.parse(localStorage.getItem('dj-foodlog-'+todayKey())||'[]')}catch(e){return[]}}
@@ -131,7 +131,7 @@ function renderFoodPicker(){
  el.innerHTML=allFoods().map((f,i)=>
   `<div class="logentry" style="align-items:center">
     <div style="flex:1"><div class="logtxt" style="font-weight:700;font-size:13.5px">${escHtml(f[0])}</div><div class="small">${f[1]} kcal · ${f[2]}p ${f[3]}c ${f[4]}f</div></div>
-    <input type="number" id="fq${i}" value="1" step="0.5" style="width:44px;background:var(--card2);border:1px solid var(--bd);border-radius:6px;padding:6px 2px;color:var(--tx);text-align:center;margin-right:6px;font-size:13px">
+    <label class="vh" for="fq${i}">Servings of ${escAttr(f[0])}</label><input type="number" id="fq${i}" value="1" step="0.5" style="width:44px;background:var(--card2);border:1px solid var(--bd);border-radius:6px;padding:6px 2px;color:var(--tx);text-align:center;margin-right:6px;font-size:13px">
     <button onclick="addFood(${i})" style="background:var(--gr);color:#00110F;font-weight:800;border-radius:6px;padding:7px 12px;font-size:12px;white-space:nowrap">Add</button>
    </div>`
  ).join("")}
@@ -164,7 +164,7 @@ function renderFoodLog(){
    ?`<img src="${e.photo}" onerror="this.style.display='none'" onclick="event.stopPropagation();playImg('${e.photo}')" style="${tstyle}">`
    :e.photoQueued
    ?`<img data-qid="${e.id}" alt="⏳" style="${tstyle};background:var(--card2);border:1px dashed var(--ye)">`
-   :`<button onclick="event.stopPropagation();pickFoodPhoto('${e.id}')" title="Add a photo" style="width:42px;height:42px;border-radius:8px;background:var(--card2);border:1px solid var(--bd);color:var(--mu);font-size:17px;margin-right:9px;flex:none;padding:0">📷</button>`;
+   :`<button onclick="event.stopPropagation();pickFoodPhoto('${e.id}')" title="Add a photo" aria-label="Add a photo" style="width:42px;height:42px;border-radius:8px;background:var(--card2);border:1px solid var(--bd);color:var(--mu);font-size:17px;margin-right:9px;flex:none;padding:0">📷</button>`;
   const ds=e.pending&&!sameDraftInputs(e)?dskip(e):null;
   const draftTxt=!e.pending?'':sameDraftInputs(e)
    ?` · <b style="color:var(--tx)">≈${Math.round(e.draft.kcal)} kcal</b> · ${Math.round(e.draft.p)}P ${Math.round(e.draft.c)}C ${Math.round(e.draft.f)}F <span style="color:var(--mu)">draft</span>`
@@ -173,8 +173,8 @@ function renderFoodLog(){
   const sub=e.pending
    ?`<div class="small" style="color:var(--ye)">⏳ pending${draftTxt} — counted by the nightly auto-fill or “Count now”${e.photoQueued?' · photo waiting to upload':''}${skipped[e.id]?`<br><span style="color:var(--or)">last run skipped it: ${escHtml(skipped[e.id])}</span>`:''}</div>`
    :`<div class="small">${e.kcal} kcal · ${e.p}g P · ${e.c}g C · ${e.f}g F${e.draft&&isFinite(e.draft.kcal)?` <span style="color:var(--dim)">· draft was ≈${Math.round(e.draft.kcal)}</span>`:''}</div>`;
-  if(e.id===_foodEdit)return `<div class="logentry" style="align-items:flex-start">${thumb}${foodEditForm(e)}<button class="del" onclick="delFoodLogEntry(${i})">×</button></div>`;
-  return `<div class="logentry" style="align-items:center">${thumb}<div style="flex:1;cursor:pointer" onclick="editFoodLogEntry(${i})"><div class="logtxt" style="font-weight:700;text-decoration:underline dotted;text-underline-offset:3px">${escHtml(e.n||'Photo meal')}${e.src=='c'?' <span class="flag" style="background:#07201D;color:var(--cy)">C</span>':''}</div>${sub}</div><button class="del" onclick="delFoodLogEntry(${i})">×</button></div>`;
+  if(e.id===_foodEdit)return `<div class="logentry" style="align-items:flex-start">${thumb}${foodEditForm(e)}<button class="del" aria-label="Delete meal" onclick="delFoodLogEntry(${i})">×</button></div>`;
+  return `<div class="logentry" style="align-items:center">${thumb}<div style="flex:1;cursor:pointer" onclick="editFoodLogEntry(${i})"><div class="logtxt" style="font-weight:700;text-decoration:underline dotted;text-underline-offset:3px">${escHtml(e.n||'Photo meal')}${e.src=='c'?' <span class="flag" style="background:#07201D;color:var(--cy)">C</span>':''}</div>${sub}</div><button class="del" aria-label="Delete meal" onclick="delFoodLogEntry(${i})">×</button></div>`;
  }).join(""):`<div class="small">Nothing logged yet today.</div>`;
  if(_foodEdit){restoreFormState(kept);const er=$("fe-err");if(er&&keptErr)er.textContent=keptErr}
  hydrateQueuedThumbs(listEl);

@@ -262,13 +262,22 @@ function run(src,pinY,pinM,pinD,opts){
  return out;
 }
 
+/* v121 accessibility markup → the pre-v121 markup, for sections that byte-compare against an older
+   baseline: the done-circle <button role="checkbox"> back to its <div>, and the added visually-hidden
+   <label>s and aria-labels dropped. Applying this and comparing proves the a11y pass changed nothing
+   else in the render. */
+function undoA11y(h){return String(h)
+ .replace(/<button type="button" class="chk([^"]*)" role="checkbox" aria-checked="(?:true|false)" aria-label="[^"]*" (onclick="[^"]*")>([^<]*)<\/button>/g,'<div class="chk$1" $2>$3</div>')
+ .replace(/<label class="vh" for="[^"]*">[^<]*<\/label>\s*/g,'')
+ .replace(/ aria-label="(?:Delete set|Delete note|Delete weigh-in|Delete entry|Delete meal|Add a photo|Rest timer|Meal photos)"/g,'')}
+
 let FAIL=0;
 function ok(cond,msg){if(!cond){FAIL++;console.log('  ✗ '+msg)}else{console.log('  ✓ '+msg)}}
 const has=(h,s)=>String(h||'').includes(s);
 
 /* Sections: public first (sorted by file name), then private when the overlay is active. A section
    that throws is a failure, not a crash — the remaining sections still run. */
-const H={run,ok,has,assemble,extract,MOD,ORIG,fs,path,DIR,PRIV,OVERLAY,REBASELINE};
+const H={run,ok,has,undoA11y,assemble,extract,MOD,ORIG,fs,path,DIR,PRIV,OVERLAY,REBASELINE};
 function runSections(dir,label){
  if(!fs.existsSync(dir))return 0;
  const files=fs.readdirSync(dir).filter(f=>f.endsWith('.js')).sort();

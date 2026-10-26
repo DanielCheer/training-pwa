@@ -88,7 +88,7 @@ if(HAS_SERVER){
 /* Timeline render — weeks colored by phase (PHASES[i].bd), current week outlined; plus the
    phase-axis labels, hero date line and countdown. All derived; wkNow/phase/Monday-rotation
    were already computed in the state block up top. */
-(function(){let h="",w=0;const nowW=tlWeek();PHW.forEach((n,pi)=>{for(let i=0;i<n;i++){h+=`<div class="tlw ${w==nowW?'now':''}" style="background:${PHASES[pi]?PHASES[pi].bd:'var(--dim)'}"></div>`;w++}});$("tl").innerHTML=h;
+(function(){let h="",w=0;const nowW=tlWeek();PHW.forEach((n,pi)=>{for(let i=0;i<n;i++){h+=`<div class="tlw ${w==nowW?'now':''}" style="background:${PHASES[pi]?PHASES[pi].bd:'var(--track)'}"></div>`;w++}});$("tl").innerHTML=h;
  $("tlx").innerHTML=PHASES.map((p,i)=>`<span style="flex:${PHW[i]||1};text-align:center">${p.n.replace(' · ',' ')}</span>`).join('');
  $("heroDates").textContent=fmtMD(START)+" → "+fmtMD(SEASON)+", "+SEASON.getFullYear()+" · "+TOTAL_WEEKS+"-week block";
  $("cd").textContent=heroStatus(new Date());})();

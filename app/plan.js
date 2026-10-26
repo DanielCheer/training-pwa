@@ -59,7 +59,7 @@ function exRow(e,idx){
  const rx=Array.isArray(e.rx)?(e.rx[phase]||e.rx[0]):(e.rx||''); // warmups carry their sets/reps in the name and have no rx array → render an empty prescription line, not "undefined"
  return `<div class="ex" id="ex-${id}">
  <div class="exh" onclick="tog('${id}')">
-  <div class="chk ${isOn?'on':''}" onclick="event.stopPropagation();chk('${id}')">${isOn?"✓":""}</div>
+  ${chkBtn(id,isOn,e.n)}
   <div class="exn"><div class="n">${e.n}</div><div class="r" style="color:${PHASES[phase]&&PHASES[phase].heavy?'var(--or)':'var(--cy)'}">${rx}</div>${targetLine(e.n)}${lastLine(id)}</div>
   <div class="car">▼</div></div>
  <div class="exb">
@@ -70,7 +70,7 @@ function exRow(e,idx){
    ${logInputHtml(id,e.n)}
    <div id="setlist-${id}">${setListHtml(id)}</div>
    <div class="exlogt" style="margin-top:10px">Notes</div>
-   <textarea id="exlog-in-${id}" placeholder="Swaps, form notes, how it felt..."></textarea>
+   <label class="vh" for="exlog-in-${id}">Notes for ${escAttr(e.n)}</label><textarea id="exlog-in-${id}" placeholder="Swaps, form notes, how it felt..."></textarea>
    <button class="savebtn" onclick="saveExLog('${id}')">+ Save note</button>
    <div id="exlog-list-${id}">${exLogListHtml(id)}</div>
   </div>
@@ -79,11 +79,14 @@ function exRow(e,idx){
   ${e.c?`<div class="cue">💡 ${e.c}</div>`:""}
  </div></div>`}
 
+/* The done-circle is a real checkbox for assistive tech: a <button role="checkbox"> whose aria-checked
+   chk() keeps in sync, named after the exercise. */
+function chkBtn(id,isOn,name){return `<button type="button" class="chk ${isOn?'on':''}" role="checkbox" aria-checked="${isOn}" aria-label="${escAttr(name)} done" onclick="event.stopPropagation();chk('${id}')">${isOn?"✓":""}</button>`}
 function chkRow(x,idx,sc,vsuffix){
  const id=day+sc+idx,isOn=!!done[id],dk=diaKey(x);
  return `<div class="ex" id="ex-${id}">
  <div class="exh" onclick="${dk?`tog('${id}')`:`chk('${id}')`}">
-  <div class="chk ${isOn?'on':''}" onclick="event.stopPropagation();chk('${id}')">${isOn?"✓":""}</div>
+  ${chkBtn(id,isOn,x.n)}
   <div class="exn"><div class="n" style="font-weight:600;font-size:14.5px">${x.n}</div></div>
   ${dk?'<div class="car">▼</div>':''}
  </div>
@@ -96,7 +99,7 @@ function chkRow(x,idx,sc,vsuffix){
 function sectionNotesHtml(dk,sk){const id=dk+sk,lbl=((SECTIONS.find(s=>s.k==sk)||{}).lbl||sk).replace(/^[^A-Za-z]+/,'');
  return `<div class="exlog" style="margin-top:12px">
   <div class="exlogt">📝 ${lbl} notes</div>
-  <textarea id="exlog-in-${id}" placeholder="Notes for today's ${lbl.toLowerCase()} — what you did, what you pushed to another day, how it felt…"></textarea>
+  <label class="vh" for="exlog-in-${id}">${lbl} notes</label><textarea id="exlog-in-${id}" placeholder="Notes for today's ${lbl.toLowerCase()} — what you did, what you pushed to another day, how it felt…"></textarea>
   <button class="savebtn" onclick="saveExLog('${id}')">+ Save note</button>
   <div id="exlog-list-${id}">${exLogListHtml(id)}</div>
  </div>`}
@@ -115,7 +118,7 @@ function renderContent(){
 function cardioSectionHtml(){return `<div class="card">
  <div class="stitle" style="color:var(--or)">Cardio &amp; Sauna</div>
  <div class="small" style="margin-bottom:8px">Enter minutes, then tap the activity.</div>
- <input id="cardioMin" type="number" inputmode="numeric" placeholder="minutes" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit;font-size:14px;margin-bottom:8px">
+ <label class="vh" for="cardioMin">Minutes</label><input id="cardioMin" type="number" inputmode="numeric" placeholder="minutes" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit;font-size:14px;margin-bottom:8px">
  <div style="display:flex;flex-wrap:wrap;gap:6px">
   <button onclick="addCardio('Stairmaster')" style="flex:1;min-width:82px;padding:9px 4px;border-radius:9px;background:#101E29;border:1px solid var(--bd);color:var(--tx);font-weight:700;font-size:12.5px">Stairmaster</button>
   <button onclick="addCardio('Sauna')" style="flex:1;min-width:66px;padding:9px 4px;border-radius:9px;background:#101E29;border:1px solid var(--bd);color:var(--tx);font-weight:700;font-size:12.5px">Sauna</button>
@@ -133,7 +136,7 @@ function tog(id){const el=$("ex-"+id);if(el)el.classList.toggle("open")}
 /* Surgical update, not a full renderContent() — a full re-render would wipe unsaved text
    sitting in any other exercise's log textarea just because you checked a different box. */
 function chk(id){if(dayRoll())renderDay();done[id]=!done[id];saveDone();const row=$("ex-"+id);if(!row)return;
- const c=row.querySelector(".chk");if(c){c.classList.toggle("on",!!done[id]);c.textContent=done[id]?"✓":""}
+ const c=row.querySelector(".chk");if(c){c.classList.toggle("on",!!done[id]);c.textContent=done[id]?"✓":"";c.setAttribute("aria-checked",String(!!done[id]))}
  schedulePush()}
 
 /* Structured workout history — one row per SET (weight × reps), entered in the in-card form,
@@ -192,7 +195,7 @@ function lastLine(id){
 }
 function setListHtml(id){
  return todaySets(id).map((x,n)=>
-  `<div class="logentry" style="padding:6px 10px"><div style="flex:1" class="small"><b style="color:var(--tx)">Set ${n+1}:</b> ${fmtSetWeight(x.e)}${x.e.reps??"?"} reps${plateSub(x.e)}</div><button class="del" onclick="delSet('${id}','${x.e.id||''}')">×</button></div>`).join("")}
+  `<div class="logentry" style="padding:6px 10px"><div style="flex:1" class="small"><b style="color:var(--tx)">Set ${n+1}:</b> ${fmtSetWeight(x.e)}${x.e.reps??"?"} reps${plateSub(x.e)}</div><button class="del" aria-label="Delete set" onclick="delSet('${id}','${x.e.id||''}')">×</button></div>`).join("")}
 function renderSetList(id){const el=$("setlist-"+id);if(el)el.innerHTML=setListHtml(id)}
 function delSet(id,entryId){ // delete by entry id, not index — a stale index from another open card would splice the wrong set
  const log=loadWorkoutLog();const i=log.findIndex(e=>e&&e.id===entryId);
@@ -243,14 +246,14 @@ function renderWorkoutHistory(){
 const INP_STY='flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 10px;color:var(--tx);font-family:inherit;font-size:14px';
 const BTN_STY='background:var(--gr);color:#00110F;font-weight:800;border-radius:8px;padding:9px 14px;font-size:13px;white-space:nowrap';
 function rnd1(n){return Math.round(n*10)/10}
-function repsAndSet(id){return `<input id="setr-${id}" type="number" inputmode="numeric" placeholder="reps" style="${INP_STY}"><button onclick="addSet('${id}')" style="${BTN_STY}">+ Set</button>`}
-function numRow(id,ph,step){return `<div style="display:flex;gap:6px;margin-bottom:7px"><input id="setw-${id}" type="number" inputmode="decimal" step="${step||'0.5'}" placeholder="${ph}" style="${INP_STY}">${repsAndSet(id)}</div>`}
+function repsAndSet(id){return `<label class="vh" for="setr-${id}">Reps</label><input id="setr-${id}" type="number" inputmode="numeric" placeholder="reps" style="${INP_STY}"><button onclick="addSet('${id}')" style="${BTN_STY}">+ Set</button>`}
+function numRow(id,ph,step){return `<div style="display:flex;gap:6px;margin-bottom:7px"><label class="vh" for="setw-${id}">${ph}</label><input id="setw-${id}" type="number" inputmode="decimal" step="${step||'0.5'}" placeholder="${ph}" style="${INP_STY}">${repsAndSet(id)}</div>`}
 /* Bodyweight lifts carry ONE signed load axis: positive = weight added, NEGATIVE = machine/band
    ASSISTANCE. That keeps pull-up progression a single continuous number (−40 → −25 → 0 → +10)
    instead of two competing fields, so lastLine()'s "max weight" top-set pick and any trend read
    already order correctly (less assist beats more assist). Nothing to migrate: existing entries
    are positive or null. Assist is entered by typing a negative, or via the "− assist" shortcut. */
-function bwRow(id){return `<div style="display:flex;gap:6px;margin-bottom:5px"><input id="setw-${id}" type="number" inputmode="decimal" step="0.5" placeholder="added load (lb) · negative = assist" style="${INP_STY};display:none">${repsAndSet(id)}</div><div id="addload-${id}" style="margin-bottom:7px"><span onclick="showLoad('${id}')" style="font-size:11.5px;color:var(--cy);cursor:pointer">+ add load</span> <span onclick="showLoad('${id}',1)" style="font-size:11.5px;color:var(--cy);cursor:pointer;margin-left:10px">− assist</span></div>`}
+function bwRow(id){return `<div style="display:flex;gap:6px;margin-bottom:5px"><label class="vh" for="setw-${id}">Added load (lb), negative = assist</label><input id="setw-${id}" type="number" inputmode="decimal" step="0.5" placeholder="added load (lb) · negative = assist" style="${INP_STY};display:none">${repsAndSet(id)}</div><div id="addload-${id}" style="margin-bottom:7px"><span onclick="showLoad('${id}')" style="font-size:11.5px;color:var(--cy);cursor:pointer">+ add load</span> <span onclick="showLoad('${id}',1)" style="font-size:11.5px;color:var(--cy);cursor:pointer;margin-left:10px">− assist</span></div>`}
 function showLoad(id,assist){const w=$("setw-"+id);if(w){w.style.display='';if(assist&&!w.value)w.value='-';w.focus()}const a=$("addload-"+id);if(a)a.style.display='none'}
 function logInputHtml(id,name){
  const t=ldOf(name),c=t?LOAD_TYPES[t]:null;
@@ -309,7 +312,7 @@ function saveBase(id){const name=exName(id),el=$("be-"+id);if(!name||!el)return 
  if(v==null){const er=$("be-err-"+id);if(er)er.textContent='"'+el.value.trim()+'" isn\'t a weight from 0 to '+BASE_MAX+' lb — the base stays '+baseFor(name)+' lb.';return}
  saveBaseOverride(name,v);closeBase(id)}
 function resetBase(id){const name=exName(id);if(name)saveBaseOverride(name,null);closeBase(id)}
-function typeMode(id){const el=$("loginp-"+id);if(el)el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:4px"><input id="setw-${id}" type="number" inputmode="decimal" step="0.5" placeholder="total weight (lb)" style="${INP_STY}">${repsAndSet(id)}</div><div style="margin-bottom:7px"><span onclick="plateMode('${id}')" style="font-size:11.5px;color:var(--cy);cursor:pointer">⊞ back to plates</span></div>`}
+function typeMode(id){const el=$("loginp-"+id);if(el)el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:4px"><label class="vh" for="setw-${id}">Total weight (lb)</label><input id="setw-${id}" type="number" inputmode="decimal" step="0.5" placeholder="total weight (lb)" style="${INP_STY}">${repsAndSet(id)}</div><div style="margin-bottom:7px"><span onclick="plateMode('${id}')" style="font-size:11.5px;color:var(--cy);cursor:pointer">⊞ back to plates</span></div>`}
 function plateMode(id){const el=$("loginp-"+id);if(el)el.innerHTML=plateBlock(id,exName(id))}
 function fmtSetWeight(e){
  if(e.weight==null)return "";
@@ -560,7 +563,7 @@ function loadExLog(id){try{return JSON.parse(localStorage.getItem(exLogKey(id))|
 function exLogListHtml(id){
  const entries=loadExLog(id);
  return entries.length?entries.map((e,i)=>
-  `<div class="logentry"><div style="flex:1"><div class="logdate">${e.d}</div><div class="logtxt">${escHtml(e.t)}</div></div><button class="del" onclick="delExLog('${id}',${i})">×</button></div>`
+  `<div class="logentry"><div style="flex:1"><div class="logdate">${e.d}</div><div class="logtxt">${escHtml(e.t)}</div></div><button class="del" aria-label="Delete note" onclick="delExLog('${id}',${i})">×</button></div>`
  ).join(""):`<div class="small" style="margin-top:2px">No entries yet.</div>`}
 function renderExLog(id){const el=$("exlog-list-"+id);if(el)el.innerHTML=exLogListHtml(id)}
 function saveExLog(id){
