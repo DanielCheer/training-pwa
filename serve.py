@@ -20,7 +20,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 def set_app_dir(app_dir):
     """Every on-disk path the server touches derives from the one app dir (set once, at startup)."""
     global APP_DIR, PRIVATE_DIR, DEVICE, PREV, UPLOAD_DIR, FOOD_DIR, AUTOFILL, FILL_LOCK
-    global DRAFTER, DRAFT_STATE, DRAFT_LOCK, DRAFT_POKE, DRAFT_OFF, DRAFT_LOG, ALLOWED_ORIGINS
+    global DRAFTER, DRAFT_STATE, DRAFT_LOCK, DRAFT_POKE, DRAFT_OFF, DRAFT_LOG, ALLOWED_ORIGINS, UPLOAD_BUDGET_FILE
     APP_DIR     = os.path.abspath(app_dir)
     PRIVATE_DIR = os.path.join(APP_DIR, 'private')               # gitignored: the owner's real data overlay
     DEVICE      = os.path.join(APP_DIR, 'device-logs.json')
@@ -36,6 +36,7 @@ def set_app_dir(app_dir):
     DRAFT_OFF   = os.path.join(APP_DIR, 'draft.off')
     DRAFT_LOG   = os.path.join(APP_DIR, 'draft.log')
     ALLOWED_ORIGINS = load_allowed_origins(os.path.join(PRIVATE_DIR, 'server.json'))
+    UPLOAD_BUDGET_FILE = os.path.join(PRIVATE_DIR, 'upload-budget.json')   # {date, bytes}: today's upload total
 
 def load_allowed_origins(path):
     """The Origins a browser POST may come from, from private/server.json {"allowedOrigins": [...]}: the
@@ -56,6 +57,8 @@ set_app_dir(os.path.dirname(os.path.abspath(__file__)))
 MAX_BODY   = 2 * 1024 * 1024           # push-logs: full localStorage dump is ~100-200 KB worst case
 MAX_VIDEO  = 2 * 1024 * 1024 * 1024    # uploads: phone videos, be generous
 MAX_FOOD   = 15 * 1024 * 1024          # food photos: client downscales to ~1600px JPEG before upload
+UPLOAD_DAY_BUDGET = 4 * 1024 ** 3      # all uploads together, per local day: a runaway or hostile client can't fill the disk
+DISK_FLOOR = 10 * 1024 ** 3            # never accept an upload that would leave less free space than this
 LOCK       = threading.Lock()
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import food_common   # the same "does this meal need a draft" rule draft-food.py uses
@@ -71,6 +74,29 @@ POST_RULES = {'/push-logs':    (('application/json',), False),
               '/request-fill': (('application/json',), True),
               '/upload-food':  (UPLOAD_TYPES, True),
               '/upload-video': (UPLOAD_TYPES, True)}
+
+def reserve_upload(n):
+    """Book n upload bytes: None if accepted, else why not ('disk-floor' / 'day-budget' / 'budget-write').
+    The day's total lives in private/upload-budget.json and resets at local midnight."""
+    with LOCK:
+        if shutil.disk_usage(APP_DIR).free - n < DISK_FLOOR:
+            return 'disk-floor'
+        day = time.strftime('%Y-%m-%d')
+        b = food_common.read_json(UPLOAD_BUDGET_FILE, retries=0)
+        used = b['bytes'] if isinstance(b, dict) and b.get('date') == day and isinstance(b.get('bytes'), int) else 0
+        if used + n > UPLOAD_DAY_BUDGET:
+            return 'day-budget'
+        os.makedirs(os.path.dirname(UPLOAD_BUDGET_FILE), exist_ok=True)
+        if not food_common.atomic_write(UPLOAD_BUDGET_FILE, {'date': day, 'bytes': used + n}, prefix='.budget-'):
+            return 'budget-write'   # can't account for it -> don't take it
+        return None
+
+def refund_upload(n):
+    """Give back the bytes of an upload that didn't land (same day only)."""
+    with LOCK:
+        b = food_common.read_json(UPLOAD_BUDGET_FILE, retries=0)
+        if isinstance(b, dict) and b.get('date') == time.strftime('%Y-%m-%d') and isinstance(b.get('bytes'), int):
+            food_common.atomic_write(UPLOAD_BUDGET_FILE, {'date': b['date'], 'bytes': max(0, b['bytes'] - n)}, prefix='.budget-')
 
 def is_seq(v):
     return isinstance(v, int) and not isinstance(v, bool) and v >= 0
@@ -300,19 +326,22 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(404); return
         super().do_HEAD()
 
-    def _upload_video(self):
-        from urllib.parse import urlparse, parse_qs, unquote
-        q = parse_qs(urlparse(self.path).query)
-        raw = unquote(q.get('name', ['video'])[0])
-        name = re.sub(r'[^A-Za-z0-9._ -]', '_', os.path.basename(raw)) or 'video'
+    def _receive_upload(self, cap, dest_dir, name):
+        """Read the request body (Content-Length bytes, at most `cap`) into dest_dir/name without clobbering
+        an earlier file (name-1, name-2, ...). Before reading, the bytes are reserved against the day's
+        upload budget and the free-disk floor (507 when either says no); a failed upload gives them back.
+        Returns (path, bytes) on success; otherwise the error response is already sent and it returns None."""
         try:
             n = int(self.headers.get('Content-Length', ''))
         except ValueError:
-            self.send_error(411); return
-        if n <= 0 or n > MAX_VIDEO:
-            self.send_error(413); return
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=UPLOAD_DIR, prefix='.up-', suffix='.tmp')
+            self.send_error(411); return None
+        if n <= 0 or n > cap:
+            self.send_error(413); return None
+        why = reserve_upload(n)
+        if why:
+            self._json(507, {'ok': False, 'state': why}, close=True); return None
+        os.makedirs(dest_dir, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=dest_dir, prefix='.up-', suffix='.tmp')
         got = 0
         try:
             with os.fdopen(fd, 'wb') as f:
@@ -323,23 +352,28 @@ class Handler(SimpleHTTPRequestHandler):
                     f.write(chunk); got += len(chunk)
                 f.flush(); os.fsync(f.fileno())
             if got != n:
-                os.unlink(tmp); self.send_error(400); return
-            dest = os.path.join(UPLOAD_DIR, name)
+                os.unlink(tmp); refund_upload(n); self.send_error(400); return None
+            dest = os.path.join(dest_dir, name)
             base, ext = os.path.splitext(name)
             i = 1
             while os.path.exists(dest):  # never clobber an earlier upload
-                dest = os.path.join(UPLOAD_DIR, f"{base}-{i}{ext}"); i += 1
+                dest = os.path.join(dest_dir, f"{base}-{i}{ext}"); i += 1
             os.replace(tmp, dest)
         except Exception:
             try: os.unlink(tmp)
             except OSError: pass
-            self.send_error(500); return
-        resp = json.dumps({"ok": True, "saved": os.path.basename(dest), "bytes": got}).encode()
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Content-Length', str(len(resp)))
-        self.end_headers()
-        self.wfile.write(resp)
+            refund_upload(n)
+            self.send_error(500); return None
+        return dest, got
+
+    def _upload_video(self):
+        from urllib.parse import urlparse, parse_qs, unquote
+        q = parse_qs(urlparse(self.path).query)
+        raw = unquote(q.get('name', ['video'])[0])
+        name = re.sub(r'[^A-Za-z0-9._ -]', '_', os.path.basename(raw)) or 'video'
+        res = self._receive_upload(MAX_VIDEO, UPLOAD_DIR, name)
+        if res:
+            self._json(200, {"ok": True, "saved": os.path.basename(res[0]), "bytes": res[1]})
 
     def _upload_food(self):
         from urllib.parse import urlparse, parse_qs
@@ -349,42 +383,9 @@ class Handler(SimpleHTTPRequestHandler):
         if not re.match(r'^\d{4}-\d{2}-\d{2}$', date):
             self.send_error(400); return
         fid = re.sub(r'[^A-Za-z0-9-]', '', fid) or 'meal'
-        try:
-            n = int(self.headers.get('Content-Length', ''))
-        except ValueError:
-            self.send_error(411); return
-        if n <= 0 or n > MAX_FOOD:
-            self.send_error(413); return
-        os.makedirs(FOOD_DIR, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=FOOD_DIR, prefix='.up-', suffix='.tmp')
-        got = 0
-        try:
-            with os.fdopen(fd, 'wb') as f:
-                while got < n:
-                    chunk = self.rfile.read(min(1024 * 1024, n - got))
-                    if not chunk:
-                        break
-                    f.write(chunk); got += len(chunk)
-                f.flush(); os.fsync(f.fileno())
-            if got != n:
-                os.unlink(tmp); self.send_error(400); return
-            name = f"{date}-{fid}.jpg"          # client always re-encodes to JPEG
-            dest = os.path.join(FOOD_DIR, name)
-            base, ext = os.path.splitext(name)
-            i = 1
-            while os.path.exists(dest):         # never clobber an earlier photo
-                dest = os.path.join(FOOD_DIR, f"{base}-{i}{ext}"); i += 1
-            os.replace(tmp, dest)
-        except Exception:
-            try: os.unlink(tmp)
-            except OSError: pass
-            self.send_error(500); return
-        resp = json.dumps({"ok": True, "saved": "food-photos/" + os.path.basename(dest), "bytes": got}).encode()
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Content-Length', str(len(resp)))
-        self.end_headers()
-        self.wfile.write(resp)
+        res = self._receive_upload(MAX_FOOD, FOOD_DIR, f"{date}-{fid}.jpg")   # client always re-encodes to JPEG
+        if res:
+            self._json(200, {"ok": True, "saved": "food-photos/" + os.path.basename(res[0]), "bytes": res[1]})
 
     def _json(self, code, obj, close=False):
         resp = json.dumps(obj).encode()
