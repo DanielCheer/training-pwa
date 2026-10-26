@@ -3,7 +3,7 @@
    phase labels follow the program's own PHW/PHASES. Asserts only values derived from the data. */
 module.exports=({run,ok,MOD})=>{
 console.log('\n=== P0. Boot — the app loads cleanly on the active data set ===');
-const probe='({days:DAYS.map(function(d){return d.k}),weeks:TOTAL_WEEKS,phases:PHASES.length,secs:SECTIONS.map(function(s){return s.k})})';
+const probe='({days:DAYS.map(function(d){return d.k}),weeks:TOTAL_WEEKS,phases:PHASES.length,secs:SECTIONS.map(function(s){return s.k}),counting:HOLD_AT_PHASE==null&&new Date()<SEASON})';
 for(const [y,m,d] of [[2026,0,15],[2026,6,25],[2026,9,26],[2027,2,1]]){
  const label=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
  const n=run(MOD,y,m,d,{probe});
@@ -16,6 +16,7 @@ for(const [y,m,d] of [[2026,0,15],[2026,6,25],[2026,9,26],[2027,2,1]]){
  ok(C.phase>=0&&C.phase<P.phases,label+': current phase '+C.phase+' is a real phase index');
  const bad=Object.entries(C.days).filter(([k,v])=>!v.focus||!/Cardio/.test(v.segrow));
  ok(!bad.length,label+': every day tab renders a focus line and its section tabs'+(bad.length?' (bad: '+bad.map(b=>b[0]).join(',')+')':''));
- ok(C.ids.heroDates.t.length>0&&/days to tip-off$/.test(C.ids.cd.t),label+': hero dates + countdown rendered ("'+C.ids.heroDates.t+'" · "'+C.ids.cd.t+'")');
+ // countdown only while the calendar runs toward SEASON; held or in-season → a status line (P6 covers each branch)
+ ok(C.ids.heroDates.t.length>0&&(P.counting?/^[1-9]\d* days to tip-off$/:/^(in-season · )?week \d+ · /).test(C.ids.cd.t),label+': hero dates + '+(P.counting?'countdown':'status line')+' rendered ("'+C.ids.heroDates.t+'" · "'+C.ids.cd.t+'")');
 }
 };

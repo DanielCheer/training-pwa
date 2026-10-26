@@ -66,7 +66,15 @@ if(HAS_SERVER){
 (function(){let h="",w=0;const nowW=tlWeek();PHW.forEach((n,pi)=>{for(let i=0;i<n;i++){h+=`<div class="tlw ${w==nowW?'now':''}" style="background:${PHASES[pi]?PHASES[pi].bd:'var(--dim)'}"></div>`;w++}});$("tl").innerHTML=h;
  $("tlx").innerHTML=PHASES.map((p,i)=>`<span style="flex:${PHW[i]||1};text-align:center">${p.n.replace(' · ',' ')}</span>`).join('');
  $("heroDates").textContent=fmtMD(START)+" → "+fmtMD(SEASON)+", "+SEASON.getFullYear()+" · "+TOTAL_WEEKS+"-week block";
- const dl=Math.max(0,Math.ceil((SEASON-new Date())/864e5));$("cd").textContent=dl+" days to tip-off";})();
+ $("cd").textContent=heroStatus(new Date());})();
+/* The hero's status line. Before SEASON with the calendar running: the countdown. Once the season has
+   started, or while the program HOLDS at a phase, a countdown is meaningless (it would read "0 days to
+   tip-off" forever) — say where the program actually is instead. All derived from data/program.js. */
+function heroStatus(now){
+ const held=HOLD_AT_PHASE!=null&&PHASES[HOLD_AT_PHASE];
+ if(!held&&now<SEASON){const d=Math.ceil((SEASON-now)/864e5);return d+(d===1?" day":" days")+" to tip-off"}
+ const week=now>=SEASON?"in-season · week "+(Math.floor((now-SEASON)/(7*864e5))+1):"week "+(wkNow+1);
+ return week+(held?" · holding at "+held.n.split(" · ").pop()+" until "+GOAL_STR:" · block complete")}
 
 /* Rest timer — timestamp-based (not tick-decrement) so it self-corrects after any
    throttling/backgrounding, plus a scheduled Notification as a best-effort background alert.
