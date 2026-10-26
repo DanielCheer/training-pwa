@@ -67,7 +67,7 @@ function renderCardio(){
  el.innerHTML=dates.map(d=>`<div style="margin-top:9px"><div class="logdate">${fmtHistDate(d)} <span style="color:var(--dim);font-weight:600">${d}</span></div>${byDate[d].map(e=>`<div class="logentry" style="padding:5px 10px"><span style="flex:1" class="small"><b style="color:var(--tx)">${escHtml(e.activity)}</b> · ${e.min} min</span><button class="del" aria-label="Delete entry" onclick="delCardio('${e.id}')">×</button></div>`).join('')}</div>`).join('');
 }
 
-function loadFoodLog(){try{return JSON.parse(localStorage.getItem('dj-foodlog-'+todayKey())||'[]')}catch(e){return[]}}
+function loadFoodLog(){return foodLogFor(todayKey())}
 function loadCustomFoods(){try{return JSON.parse(localStorage.getItem('dj-customfoods')||'[]')}catch(e){return[]}}
 function allFoods(){return FOODS.concat(loadCustomFoods())}
 const r1=rnd1; // dedup: identical rounding to rnd1() — aliased to avoid churning the food-log call sites
@@ -213,7 +213,7 @@ const HAS_SERVER=!!SERVER&&location.protocol.startsWith('http');
 function serverHas(f){return HAS_SERVER&&!!SERVER[f]}
 let _photoTarget=null; // null = new meal from the Log-a-Meal form; an entry id = add a photo to that row
 function pickFoodPhoto(id){_photoTarget=id;const inp=$("foodPhotoInput");if(inp){inp.value="";inp.click()}}
-function foodLogFor(date){try{return JSON.parse(localStorage.getItem('dj-foodlog-'+date)||'[]')}catch(e){return[]}}
+function foodLogFor(date){return lsJSON('dj-foodlog-'+date)} // memoized per render (lsJSON, app/config.js)
 function patchFoodEntry(date,id,fn){const log=foodLogFor(date),e=log.find(x=>x&&x.id===id);if(!e)return false;fn(e);lsSet('dj-foodlog-'+date,JSON.stringify(log));return true}
 function addPendingMeal(text){
  const date=todayKey(),log=foodLogFor(date),e={id:newFoodId(),at:new Date().toISOString(),n:text,pending:true,kcal:0,p:0,c:0,f:0};

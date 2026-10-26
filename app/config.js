@@ -57,12 +57,29 @@ function appBanner(id,msg,tone){
    x.onclick=()=>b.remove();b.appendChild(x)}
  }catch(e){console.error('banner '+id+': '+msg)}}
 
+/* Parsed-read memo for the big logs (loadWorkoutLog, loadFoodLog, foodLogFor). One render pass parsed
+   the same JSON dozens of times (every exercise card's target and last-session line re-read the whole
+   workout log). A cached parse is reused only while the stored string is unchanged, so a write from
+   anywhere (another tab, the inbox, a test) is never masked; lsSet() drops the key's entry before it
+   writes, so a caller that mutated the array and then failed to save can't leave that copy behind;
+   and the memo empties when the current task ends, so it lives for one render, not the session.
+   Callers own the returned array until their write: mutate it only to save it. */
+const _lsMemo=new Map();let _lsMemoSweep=false;
+function lsJSON(k){
+ const raw=localStorage.getItem(k),m=_lsMemo.get(k);
+ if(m&&m.raw===raw)return m.val;
+ let val;try{val=JSON.parse(raw||'[]')}catch(e){val=[]}
+ _lsMemo.set(k,{raw,val});
+ if(!_lsMemoSweep){_lsMemoSweep=true;Promise.resolve().then(()=>{_lsMemo.clear();_lsMemoSweep=false})}
+ return val}
+
 /* Every app write to localStorage goes through lsSet(). A full store throws QuotaExceededError out of
    the middle of a save, so a logged set or meal silently never persisted (and the code after the
    write never ran). lsSet catches exactly that error, shows a persistent banner naming what was lost
    and returns false; any other error still throws. */
 function isQuotaError(e){return !!e&&(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22||e.code===1014)}
 function lsSet(k,v){
+ _lsMemo.delete(k); // write-through: the next read re-parses what was actually stored
  try{localStorage.setItem(k,v);return true}
  catch(e){if(!isQuotaError(e))throw e;
   console.error('localStorage is full: '+k+' was not saved');

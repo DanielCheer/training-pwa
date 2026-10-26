@@ -144,7 +144,7 @@ function chk(id){if(dayRoll())renderDay();done[id]=!done[id];saveDone();const ro
    Dates use localDayKey, not todayKey: UTC rolls to tomorrow during the local evening, when most
    sessions happen, so late sessions were getting stamped with the next day's date. Food-log day keys
    stay UTC — contract-locked with the shared-log inbox; changing them would orphan history. */
-function loadWorkoutLog(){try{return JSON.parse(localStorage.getItem('dj-workout-log')||'[]')}catch(e){return[]}}
+function loadWorkoutLog(){return lsJSON('dj-workout-log')} // memoized per render (lsJSON, app/config.js)
 function exName(id){
  const idx=+id.slice((day+sec).length);
  const list=dayObj(day).secs[sec];
