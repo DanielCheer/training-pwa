@@ -115,7 +115,7 @@ function fail(job,why){
 # harness/, .claude/ - is a 404, and no directory is ever listed. Checked on the decoded, normalized
 # path, so /./x, /a/../x and %2D spellings can't route around it (they did around the old prefix blocklist).
 PUBLIC_FILES = {'', 'index.html', 'sw.js', 'manifest.json', 'shared-log.json', 'server-synced.json',
-                'autofill-state.json', 'draft-state.json', 'upload'}
+                'autofill-state.json', 'draft-state.json', 'upload', 'styles.css'}
 PUBLIC_DIRS  = ('icons/', 'food-photos/', 'videos/', 'app/', 'data/')   # one file deep, never the folder itself
 # Served from PRIVATE_DIR instead of the committed demo copies whenever PRIVATE_DIR/data/ exists. All or
 # nothing: an overlayable file missing from the overlay is a 404, never a fallback to the demo file -
