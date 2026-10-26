@@ -1,0 +1,39 @@
+# runtime state (serve.py / agents)
+device-logs.json
+device-logs.prev.json
+shared-log.json
+server-synced.json
+autofill-state.json
+draft-state.json
+*.lock
+draft.poke
+draft.off
+autofill.off
+*.log
+*.log.prev
+*.tmp
+.device-logs-*
+.up-*
+# media + exports (real meals; downloaded reels are third-party copyright)
+food-photos/
+videos/
+exports/
+exports-*.csv
+# private overlay: the owner's real profile/program/history, baselines, raw changelog, estimator defaults
+private/
+food-defaults.md
+harness/index.orig.html
+harness/draft-bakeoff-results.json
+sheets-service-account.json
+# personal pages that are not the app
+cars.html
+cars/
+rg.html
+# tooling
+.claude/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+Thumbs.db
+.DS_Store
