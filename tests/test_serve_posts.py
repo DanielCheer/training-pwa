@@ -290,3 +290,29 @@ def test_request_fill_respects_a_live_autofill_lock(server, tmp_path, stale_afte
         assert body['state'] == 'running'
     else:
         assert body['state'] == 'stale-snapshot', 'a stale or missing lock does not block (no snapshot pushed -> 400)'
+
+
+def test_a_big_refused_upload_still_gets_its_answer(server):
+    """The client is still sending megabytes we refuse to read: a lingering close makes sure it reads our
+    403/507 instead of a connection reset."""
+    body = b'x' * (3 * 1024 * 1024)
+    s = socket.create_connection(('127.0.0.1', server.port), timeout=10)
+    sender = threading.Thread(target=lambda: _send_quietly(s, b'POST /upload-video?name=a.mp4 HTTP/1.1\r\nHost: x\r\n'
+                              b'Content-Type: video/mp4\r\nContent-Length: %d\r\n\r\n' % len(body) + body))
+    sender.start()
+    buf = b''
+    while b'\r\n\r\n' not in buf:
+        chunk = s.recv(65536)
+        if not chunk:
+            break
+        buf += chunk
+    sender.join(10)
+    s.close()
+    assert statuses(buf) == [403] and b'Connection: close' in buf
+
+
+def _send_quietly(s, data):
+    try:
+        s.sendall(data)
+    except OSError:
+        pass   # the server may stop reading after its linger window - the answer is what matters

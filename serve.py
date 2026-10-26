@@ -13,7 +13,7 @@
 # Private overlay: when <dir>/private/data/ exists, the OVERLAYABLE paths are served from <dir>/private/
 # instead of the committed demo copies - all-or-nothing, a file missing there is a 404 (never the demo).
 
-import json, os, re, shutil, subprocess, sys, tempfile, threading, time
+import json, os, re, shutil, socket, subprocess, sys, tempfile, threading, time
 from functools import partial
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
@@ -359,6 +359,7 @@ class Handler(SimpleHTTPRequestHandler):
                         break
                     f.write(chunk); got += len(chunk)
                 f.flush(); os.fsync(f.fileno())
+            self._body_pending = got != n
             if got != n:
                 os.unlink(tmp); refund_upload(n); self.send_error(400); return None
             dest = os.path.join(dest_dir, name)
@@ -419,6 +420,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not chunk:
                 self.close_connection = True; return False
             n -= len(chunk)
+        self._body_pending = False
         return True
 
     def _post_refusal(self, route):
@@ -482,6 +484,38 @@ class Handler(SimpleHTTPRequestHandler):
                 pass
 
     def do_POST(self):
+        self._body_pending = True   # cleared once the request body has been read in full
+        try:
+            self._post()
+        finally:
+            if self._body_pending:      # answered without reading the body: this connection is done
+                self.close_connection = True
+
+    LINGER_S, LINGER_MAX = 2.0, 8 * 1024 * 1024
+
+    def finish(self):
+        """Lingering close after a POST answered without reading its body. Closing a socket that still holds
+        unread data makes the OS send a reset, which can destroy the response before the client reads it
+        (the phone would see "network error" instead of our 403/413/507). So: send our FIN, then read and
+        drop what the client is still sending for a moment, then close."""
+        super().finish()
+        if getattr(self, '_body_pending', False):
+            try:
+                self.connection.shutdown(socket.SHUT_WR)
+                self.connection.settimeout(0.25)
+                end, got = time.time() + self.LINGER_S, 0
+                while time.time() < end and got < self.LINGER_MAX:
+                    try:
+                        chunk = self.connection.recv(65536)
+                    except socket.timeout:
+                        continue
+                    if not chunk:
+                        break
+                    got += len(chunk)
+            except OSError:
+                pass
+
+    def _post(self):
         route = self.path.split('?')[0]
         if route not in POST_RULES:
             self.send_error(404); return
@@ -503,6 +537,7 @@ class Handler(SimpleHTTPRequestHandler):
         if n <= 0 or n > MAX_BODY:
             self.send_error(413); return
         body = self.rfile.read(n)
+        self._body_pending = len(body) != n
         try:
             data = json.loads(body)
             if not isinstance(data, dict) or 'pushedAt' not in data or 'ls' not in data or not is_seq(data.get('seq')):
