@@ -8,8 +8,8 @@ monitor. On ~2026-07-30 the server died on a reboot and the phone->Claude sync S
 
 A Startup-folder launcher (dj-training-server-watchdog.vbs) runs this at login with `--loop`, so it
 auto-starts after every reboot with NO admin rights needed. In --loop mode it checks the port every
-30 min forever and, if the server is down, restarts it detached. Self-healing beats alerting — the
-failure fixes itself within 30 min max (and instantly at login) instead of waiting for someone to
+INTERVAL (5 min) forever and, if the server is down, restarts it detached. Self-healing beats alerting —
+the failure fixes itself within one interval (and instantly at login) instead of waiting for someone to
 notice. Every FAULT is logged to server-watchdog.log, plus one "ok" heartbeat per day so a healthy
 log still proves the watchdog is alive without spamming.
 
@@ -18,8 +18,11 @@ draft-food.py uses for instant meal drafts. It is pinned to the RTX 3070 - DJ's 
 his own work and must never be touched - via its env, and that pinning is VERIFIED after every start
 from the instance's own log: exactly one `inference compute` device, and it must be the 3070.
 Anything else = FAULT gpu-placement, the instance is killed, and it is not retried until the next
-check (fails closed, loudly). Its env overrides DJ's user-level OLLAMA_KEEP_ALIVE=0 (which would
-unload the 17 GB model after every request). DJ's normal Ollama on :11434 is never referenced.
+check (fails closed, loudly). Its env sets OLLAMA_KEEP_ALIVE=1m, overriding DJ's user-level 0. It is only a backstop: draft-food.py
+sends its own keep_alive with every request (2m per meal, 5m for a warm-up ahead of a queued photo)
+and unloads the model explicitly after its last meal, so the ~20 GB the 27B model holds goes back
+within seconds instead of sitting idle for 30 min (it was blocking DJ's AI-studio renders). A request
+without its own keep_alive gets 1m. DJ's normal Ollama on :11434 is never referenced.
 A draft.off file pauses it (not started, no FAULT).
 
 Usage:
@@ -49,7 +52,7 @@ SERVICES = [
     {'name': 'ollama-3070', 'port': 11435, 'cmd': [OLLAMA_EXE, 'serve'],
      'env': {'CUDA_DEVICE_ORDER': 'PCI_BUS_ID', 'CUDA_VISIBLE_DEVICES': '0',
              'OLLAMA_VULKAN': '0', 'GGML_VK_VISIBLE_DEVICES': '-1',   # without these Ollama still sees the 3090 via Vulkan
-             'OLLAMA_HOST': '127.0.0.1:11435', 'OLLAMA_KEEP_ALIVE': '30m',
+             'OLLAMA_HOST': '127.0.0.1:11435', 'OLLAMA_KEEP_ALIVE': '1m',   # backstop only; draft-food.py sets keep_alive per request + unloads
              'OLLAMA_MAX_LOADED_MODELS': '1', 'OLLAMA_NUM_PARALLEL': '1'},
      'log': 'ollama-3070.log', 'off_file': 'draft.off', 'gpu_name': 'NVIDIA GeForce RTX 3070',
      'priority': BELOW_NORMAL_PRIORITY_CLASS},

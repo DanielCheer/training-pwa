@@ -17,6 +17,11 @@
 # the itemised answer + `unsure` flag + consistency checks below. A failed check is a SKIP with a reason
 # the app shows ("draft: unsure"), never a number.
 #
+# Memory: the 27B model holds ~20 GB of RAM/VRAM while loaded, and DJ's other GPU work (AI-studio renders)
+# needs it back. So every request names its own keep_alive (KEEP_ALIVE_CHAT per meal, KEEP_ALIVE_WARM for a
+# warm-up ahead of a queued photo) and, after the last meal of a run, the model is unloaded explicitly
+# (keep_alive 0). The watchdog's OLLAMA_KEEP_ALIVE=1m is only the backstop for a crashed run.
+#
 # Usage: draft-food.py [APP_DIR] [--trigger=push|manual]
 # Env overrides (tests/tuning): DRAFT_HOST, DRAFT_MODEL. Pause with a draft.off file (the watchdog then
 # also stops (re)starting the 3070 Ollama instance, giving its RAM back).
@@ -52,6 +57,9 @@ ITEMS_TOL   = (50, 0.10)    # sum of items may differ from the total by max(50 k
 ATWATER_TOL = 0.25          # 4p+4c+9f may differ from kcal by 25% (fibre, alcohol, rounding)
 PRUNE_DAYS  = 14
 LOCK_STALE_S = DRAFT_HTTP_TIMEOUT_S + 120   # refreshed after every meal, so a long batch never looks stale
+KEEP_ALIVE_CHAT = '2m'      # per meal: long enough for the next meal of the same batch, short when idle
+KEEP_ALIVE_WARM = '5m'      # warm-up for a photo still uploading: the draft request lands within minutes
+UNLOAD_TIMEOUT_S = 30
 TRANSIENT = {'ollama-down', 'timeout', 'http-error'}
 OK_RESULTS = ('drafted', 'empty', 'nothing-ready', 'nothing-usable')   # mirrors DRAFT_OK in app/config.js
 T0 = time.time()
@@ -122,13 +130,42 @@ def parse_answer(txt):
     return None
 
 
+MODEL_USED = False   # set once this run sends a chat request
+
+
+def chat_body(msg):
+    return {'model': DRAFT_MODEL, 'messages': [msg], 'stream': False, 'think': False, 'keep_alive': KEEP_ALIVE_CHAT,
+            'options': {'temperature': 0, 'num_ctx': DRAFT_NUM_CTX, 'num_predict': DRAFT_NUM_PREDICT}}
+
+
+def warm_body():
+    return {'model': DRAFT_MODEL, 'prompt': '', 'stream': False, 'keep_alive': KEEP_ALIVE_WARM}
+
+
+def unload_body():
+    return {'model': DRAFT_MODEL, 'keep_alive': 0}
+
+
+def unload_model():
+    """Free the model now (Ollama: /api/generate with keep_alive 0). Never raises: the drafts are already
+    saved, and the per-request keep_alive / watchdog backstop unloads it anyway if this fails."""
+    try:
+        _post('/api/generate', unload_body(), UNLOAD_TIMEOUT_S)
+        log('unloaded %s' % DRAFT_MODEL)
+        return True
+    except Exception as ex:
+        log('unload failed (keep_alive %s will free it): %r' % (KEEP_ALIVE_CHAT, ex))
+        return False
+
+
 def ask_model(prompt, img_b64=None):
     """-> (obj, reason, ms). reason is a skip reason when obj is None."""
     msg = {'role': 'user', 'content': prompt}
     if img_b64:
         msg['images'] = [img_b64]
-    body = {'model': DRAFT_MODEL, 'messages': [msg], 'stream': False, 'think': False,
-            'options': {'temperature': 0, 'num_ctx': DRAFT_NUM_CTX, 'num_predict': DRAFT_NUM_PREDICT}}
+    body = chat_body(msg)
+    global MODEL_USED
+    MODEL_USED = True   # from here on the model may be loaded: main() unloads it after the last meal
     t = time.time()
     try:
         r = _post('/api/chat', body, DRAFT_HTTP_TIMEOUT_S)
@@ -173,7 +210,7 @@ def warm_model():
     try:
         if json.load(urllib.request.urlopen(DRAFT_HOST + '/api/ps', timeout=10)).get('models'):
             return True
-        _post('/api/generate', {'model': DRAFT_MODEL, 'prompt': '', 'stream': False}, DRAFT_HTTP_TIMEOUT_S)
+        _post('/api/generate', warm_body(), DRAFT_HTTP_TIMEOUT_S)
         return True
     except Exception as ex:
         log('warm failed: %r' % ex)
@@ -306,6 +343,10 @@ def main():
         if result != 'empty' or err or st.get('lastResult') not in OK_RESULTS:
             save_state(st, result, error=err, snapshot_at=snap, warmed=warmed)
         if err or not os.path.exists(POKE):
+            # the run is over: give the memory back, unless this pass just warmed the model for a photo
+            # that is still uploading (its KEEP_ALIVE_WARM covers that wait, then frees it)
+            if MODEL_USED and not warmed:
+                unload_model()
             return 1 if err else 0
         log('poke: rescanning')
 
