@@ -141,11 +141,19 @@ function gatherDeviceLogs(){
  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
   if(k&&k.startsWith('dj-'))ls[k]=localStorage.getItem(k)}
  return {v:1,pushedAt:new Date().toISOString(),seq:pushSeq+1,day,sec,phase,tueMode,done:{...done},ls}}
-function pushDeviceLogs(){ // resolves true/false (v116: Count now must know the PC really has the latest log)
+/* The server refuses a snapshot older than the one it holds (409 {state:'stale-seq', seq}) — this phone's
+   counter fell behind (cleared site data, another device). Adopt max(stored, own) so the retry sends the
+   next number, and retry once. */
+function pushDeviceLogs(retried){ // resolves true/false (v116: Count now must know the PC really has the latest log)
  if(!serverHas('push'))return Promise.resolve(false);
  clearTimeout(pushTO);pushTO=null;
  return fetch('push-logs',{method:'POST',headers:{'Content-Type':'application/json',...CLIENT_HEADERS},body:JSON.stringify(gatherDeviceLogs())})
-  .then(r=>{if(!r.ok)return false;pushSeq++;localStorage.setItem('dj-push-seq',String(pushSeq));
+  .then(r=>{
+   if(r.status===409&&!retried)return r.json().then(d=>{
+    if(!(d&&d.state==='stale-seq'&&Number.isInteger(d.seq)&&d.seq>=0))return false;
+    pushSeq=Math.max(d.seq,pushSeq);localStorage.setItem('dj-push-seq',String(pushSeq));
+    return pushDeviceLogs(true)},()=>false);
+   if(!r.ok)return false;pushSeq++;localStorage.setItem('dj-push-seq',String(pushSeq));
    localStorage.setItem('dj-push-last',new Date().toISOString());renderSyncStatus();return true}) // freshness monitor for the phone→PC half
   .catch(()=>false)}
-function schedulePush(){clearTimeout(pushTO);pushTO=setTimeout(pushDeviceLogs,4000)}
+function schedulePush(){clearTimeout(pushTO);pushTO=setTimeout(()=>pushDeviceLogs(),4000)}

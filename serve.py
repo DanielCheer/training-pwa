@@ -72,6 +72,9 @@ POST_RULES = {'/push-logs':    (('application/json',), False),
               '/upload-food':  (UPLOAD_TYPES, True),
               '/upload-video': (UPLOAD_TYPES, True)}
 
+def is_seq(v):
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
 def content_type_ok(header, accepted):
     mt = (header or '').split(';', 1)[0].strip().lower()
     return bool(mt) and any(mt.startswith(a) if a.endswith('/') else mt == a for a in accepted)
@@ -479,11 +482,18 @@ class Handler(SimpleHTTPRequestHandler):
         body = self.rfile.read(n)
         try:
             data = json.loads(body)
-            if not isinstance(data, dict) or 'pushedAt' not in data or 'ls' not in data:
+            if not isinstance(data, dict) or 'pushedAt' not in data or 'ls' not in data or not is_seq(data.get('seq')):
                 raise ValueError
         except Exception:
             self.send_error(400); return
         with LOCK:
+            # Never let an older snapshot replace a newer one: a phone that lost its dj-push-seq (cleared site
+            # data, a second device, a stale tab) would otherwise overwrite the log the PC agents read. Equal
+            # is fine (the same push retried). The client adopts the stored seq and retries once.
+            stored = food_common.read_json(DEVICE, retries=0)
+            stored_seq = stored.get('seq') if isinstance(stored, dict) and is_seq(stored.get('seq')) else None
+            if stored_seq is not None and data['seq'] < stored_seq:
+                self._json(409, {'ok': False, 'state': 'stale-seq', 'seq': stored_seq}); return
             if os.path.exists(DEVICE):
                 shutil.copyfile(DEVICE, PREV)  # junk-POST insurance
             fd, tmp = tempfile.mkstemp(dir=APP_DIR, prefix='.device-logs-', suffix='.tmp')

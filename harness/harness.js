@@ -247,7 +247,7 @@ function run(src,pinY,pinM,pinD,opts){
   fetch(){return Promise.resolve({ok:false,json(){return Promise.resolve(null)}})},
   URL:{createObjectURL(){return'blob:x'},revokeObjectURL(){}},
   setTimeout(){return 0},clearTimeout(){},setInterval(){return 0},clearInterval(){},
-  requestAnimationFrame(){return 0},cancelAnimationFrame(){},
+  requestAnimationFrame(){return 0},cancelAnimationFrame(){},addEventListener(){},
   encodeURIComponent,decodeURIComponent,Math,JSON,parseInt,parseFloat,isFinite,isNaN,Array,Object,String,Number,Boolean,RegExp,Set,Map,Promise,Blob:function(){},Image:function(){}
  };
  sandbox.window=sandbox;sandbox.globalThis=sandbox;
@@ -258,7 +258,7 @@ function run(src,pinY,pinM,pinD,opts){
  const out={cap:sandbox.__CAP,errors};
  for(const f of EPI_ORDER)if(EPIS[f])out[EPIS[f].key]=sandbox[EPIS[f].g];
  if(opts.probe)out.probe=sandbox.__PROBE;
- out.store=store;
+ out.store=store;out.ctx=sandbox; // async sections read the sandbox again after its promises settle
  return out;
 }
 
@@ -278,20 +278,24 @@ const has=(h,s)=>String(h||'').includes(s);
 /* Sections: public first (sorted by file name), then private when the overlay is active. A section
    that throws is a failure, not a crash — the remaining sections still run. */
 const H={run,ok,has,undoA11y,assemble,extract,MOD,ORIG,fs,path,DIR,PRIV,OVERLAY,REBASELINE};
-function runSections(dir,label){
+/* A section may be async (return a promise) when it must let the app's fetch/promise chains settle —
+   run(...).ctx is the sandbox to read afterwards. Sections still run one at a time, in order. */
+async function runSections(dir,label){
  if(!fs.existsSync(dir))return 0;
  const files=fs.readdirSync(dir).filter(f=>f.endsWith('.js')).sort();
  for(const f of files){
-  try{require(path.join(dir,f))(H)}
+  try{await require(path.join(dir,f))(H)}
   catch(e){ok(false,label+' section '+f+' threw: '+String(e&&e.stack||e).split('\n').slice(0,2).join(' | '))}}
  return files.length;
 }
-const nPub=runSections(path.join(__dirname,'sections'),'public');
-let nPriv=0;
-if(OVERLAY){
- if(!ORIG)ok(false,'private overlay is active but the v119 baseline '+ORIG_FILE+' is missing');
- nPriv=runSections(path.join(PRIV,'harness','sections'),'private');
-}
-console.log('\nsections: '+nPub+' public'+(OVERLAY?' + '+nPriv+' private':' (demo data — private sections skipped)'));
-console.log('\n'+(FAIL===0?'ALL CHECKS PASSED':FAIL+' CHECK(S) FAILED'));
-process.exitCode=FAIL===0?0:1;
+(async()=>{
+ const nPub=await runSections(path.join(__dirname,'sections'),'public');
+ let nPriv=0;
+ if(OVERLAY){
+  if(!ORIG)ok(false,'private overlay is active but the v119 baseline '+ORIG_FILE+' is missing');
+  nPriv=await runSections(path.join(PRIV,'harness','sections'),'private');
+ }
+ console.log('\nsections: '+nPub+' public'+(OVERLAY?' + '+nPriv+' private':' (demo data — private sections skipped)'));
+ console.log('\n'+(FAIL===0?'ALL CHECKS PASSED':FAIL+' CHECK(S) FAILED'));
+ process.exitCode=FAIL===0?0:1;
+})();
