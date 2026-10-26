@@ -17,7 +17,10 @@ def now_iso():
 
 def atomic_write(path, data, prefix='.food-'):
     """tmp + fsync + os.replace. Returns False (never raises) so callers can report write-error."""
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=prefix, suffix='.tmp')
+    try:
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=prefix, suffix='.tmp')
+    except OSError:   # missing / unwritable folder: report it like any other failed write
+        return False
     try:
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=1)
