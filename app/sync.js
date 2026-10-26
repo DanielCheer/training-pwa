@@ -144,7 +144,7 @@ function gatherDeviceLogs(){
 function pushDeviceLogs(){ // resolves true/false (v116: Count now must know the PC really has the latest log)
  if(!serverHas('push'))return Promise.resolve(false);
  clearTimeout(pushTO);pushTO=null;
- return fetch('push-logs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(gatherDeviceLogs())})
+ return fetch('push-logs',{method:'POST',headers:{'Content-Type':'application/json',...CLIENT_HEADERS},body:JSON.stringify(gatherDeviceLogs())})
   .then(r=>{if(!r.ok)return false;pushSeq++;localStorage.setItem('dj-push-seq',String(pushSeq));
    localStorage.setItem('dj-push-last',new Date().toISOString());renderSyncStatus();return true}) // freshness monitor for the phone→PC half
   .catch(()=>false)}

@@ -6,6 +6,9 @@
 # failed twice on flaky wifi; this rides the same tailnet HTTPS the app uses.
 # Also POST /upload-food -> food-photos/ so meal pics ride with the food log.
 # Also POST /request-fill -> runs autofill-food.py now (the in-app "Count now" button).
+# Every POST must carry the right Content-Type and the X-Train-Client header (push-logs: JSON alone, for
+# sendBeacon), and an Origin, when sent, must be allowed (private/server.json, else same-host): a page on
+# another origin can't make a browser send either without a CORS preflight, which this server never grants.
 # Run: python serve.py [--port N] [--dir APP_DIR]   (defaults: 8000, this file's folder; loopback only)
 # Private overlay: when <dir>/private/data/ exists, the OVERLAYABLE paths are served from <dir>/private/
 # instead of the committed demo copies - all-or-nothing, a file missing there is a 404 (never the demo).
@@ -17,7 +20,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 def set_app_dir(app_dir):
     """Every on-disk path the server touches derives from the one app dir (set once, at startup)."""
     global APP_DIR, PRIVATE_DIR, DEVICE, PREV, UPLOAD_DIR, FOOD_DIR, AUTOFILL, FILL_LOCK
-    global DRAFTER, DRAFT_STATE, DRAFT_LOCK, DRAFT_POKE, DRAFT_OFF, DRAFT_LOG
+    global DRAFTER, DRAFT_STATE, DRAFT_LOCK, DRAFT_POKE, DRAFT_OFF, DRAFT_LOG, ALLOWED_ORIGINS
     APP_DIR     = os.path.abspath(app_dir)
     PRIVATE_DIR = os.path.join(APP_DIR, 'private')               # gitignored: the owner's real data overlay
     DEVICE      = os.path.join(APP_DIR, 'device-logs.json')
@@ -32,6 +35,23 @@ def set_app_dir(app_dir):
     DRAFT_POKE  = os.path.join(APP_DIR, 'draft.poke')
     DRAFT_OFF   = os.path.join(APP_DIR, 'draft.off')
     DRAFT_LOG   = os.path.join(APP_DIR, 'draft.log')
+    ALLOWED_ORIGINS = load_allowed_origins(os.path.join(PRIVATE_DIR, 'server.json'))
+
+def load_allowed_origins(path):
+    """The Origins a browser POST may come from, from private/server.json {"allowedOrigins": [...]}: the
+    public URL(s) the app is opened at (e.g. the Tailscale HTTPS name), which a reverse proxy hides from
+    the Host header. None (no file) = same-host only. A malformed file stops the server: guessing would
+    either lock the phone out or open the door."""
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            cfg = json.load(f)
+    except FileNotFoundError:
+        return None
+    origins = cfg.get('allowedOrigins') if isinstance(cfg, dict) else None
+    if not isinstance(origins, list) or not all(isinstance(o, str) and re.match(r'^https?://[^/\s]+$', o) for o in origins):
+        raise SystemExit('serve.py: %s needs {"allowedOrigins": ["https://host[:port]", ...]}' % path)
+    return frozenset(origins)
+
 set_app_dir(os.path.dirname(os.path.abspath(__file__)))
 MAX_BODY   = 2 * 1024 * 1024           # push-logs: full localStorage dump is ~100-200 KB worst case
 MAX_VIDEO  = 2 * 1024 * 1024 * 1024    # uploads: phone videos, be generous
@@ -42,6 +62,19 @@ import food_common   # the same "does this meal need a draft" rule draft-food.py
 FILL_MIN_GAP   = 60    # s between button-triggered runs
 ACCESS_LOG_MAX = 400_000  # bytes; serve-access.log is trimmed to its newest half past this
 FRESH_PUSH_S   = 120   # the phone pushes right before /request-fill; an older snapshot means that push failed
+CLIENT_HEADER  = 'X-Train-Client'   # the app's fetches (and the upload page) send "X-Train-Client: 1"
+UPLOAD_TYPES   = ('image/', 'video/', 'application/octet-stream')
+# route -> (accepted Content-Types: exact, or a prefix ending in "/"; whether X-Train-Client is required).
+# /push-logs takes JSON alone: the app's background flush uses navigator.sendBeacon, which can't set headers,
+# and a cross-origin page can't send application/json without a preflight anyway.
+POST_RULES = {'/push-logs':    (('application/json',), False),
+              '/request-fill': (('application/json',), True),
+              '/upload-food':  (UPLOAD_TYPES, True),
+              '/upload-video': (UPLOAD_TYPES, True)}
+
+def content_type_ok(header, accepted):
+    mt = (header or '').split(';', 1)[0].strip().lower()
+    return bool(mt) and any(mt.startswith(a) if a.endswith('/') else mt == a for a in accepted)
 _fill_last = 0.0
 
 UPLOAD_PAGE = b"""<!doctype html><html><head><meta charset="utf-8">
@@ -86,6 +119,8 @@ function send(job){
  st.textContent=job.tries?'uploading (retry '+job.tries+')':'uploading';st.className='st';
  var xhr=new XMLHttpRequest();
  xhr.open('POST','/upload-video?name='+encodeURIComponent(job.file.name));
+ xhr.setRequestHeader('X-Train-Client','1');
+ xhr.setRequestHeader('Content-Type',/^(image|video)\//.test(job.file.type)?job.file.type:'application/octet-stream');
  xhr.timeout=1200000;
  xhr.upload.onprogress=function(ev){if(ev.lengthComputable)fill.style.width=(ev.loaded/ev.total*100).toFixed(0)+'%';};
  xhr.onload=function(){
@@ -348,13 +383,31 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(resp)
 
-    def _json(self, code, obj):
+    def _json(self, code, obj, close=False):
         resp = json.dumps(obj).encode()
         self.send_response(code)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(resp)))
+        if close:   # the request body was never read: this connection can't carry another request
+            self.send_header('Connection', 'close')
         self.end_headers()
         self.wfile.write(resp)
+
+    def _post_refusal(self, route):
+        """Why this POST is refused (a short reason), or None. See POST_RULES / ALLOWED_ORIGINS."""
+        accepted, need_header = POST_RULES[route]
+        origin = self.headers.get('Origin')
+        if origin is not None:
+            if ALLOWED_ORIGINS is not None:
+                if origin not in ALLOWED_ORIGINS:
+                    return 'origin'
+            elif origin not in ('http://%s' % self.headers.get('Host', ''), 'https://%s' % self.headers.get('Host', '')):
+                return 'origin'
+        if not content_type_ok(self.headers.get('Content-Type'), accepted):
+            return 'content-type'
+        if need_header and self.headers.get(CLIENT_HEADER) != '1':
+            return 'client-header'
+        return None
 
     def _request_fill(self):
         """Start autofill-food.py now (detached). 202 started / 409 running / 429 too soon /
@@ -405,14 +458,18 @@ class Handler(SimpleHTTPRequestHandler):
                 pass
 
     def do_POST(self):
-        if self.path.split('?')[0] == '/upload-video':
-            self._upload_video(); return
-        if self.path.split('?')[0] == '/upload-food':
-            self._upload_food(); return
-        if self.path.split('?')[0] == '/request-fill':
-            self._request_fill(); return
-        if self.path.split('?')[0] != '/push-logs':
+        route = self.path.split('?')[0]
+        if route not in POST_RULES:
             self.send_error(404); return
+        why = self._post_refusal(route)
+        if why:
+            self._json(403, {'ok': False, 'state': 'forbidden', 'reason': why}, close=True); return
+        if route == '/upload-video':
+            self._upload_video(); return
+        if route == '/upload-food':
+            self._upload_food(); return
+        if route == '/request-fill':
+            self._request_fill(); return
         try:
             n = int(self.headers.get('Content-Length', ''))
         except ValueError:

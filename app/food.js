@@ -270,7 +270,7 @@ function queueFoodPhoto(id,date,file){
  .catch(()=>alert('Could not read that image.'))}
 function uploadPhotoBlob(id,date,blob){
  if(!serverHas('photos'))return Promise.resolve(false);
- return fetch('/upload-food?date='+date+'&id='+encodeURIComponent(id),{method:'POST',body:blob})
+ return fetch('/upload-food?date='+date+'&id='+encodeURIComponent(id),{method:'POST',headers:{'Content-Type':blob.type||'image/jpeg',...CLIENT_HEADERS},body:blob})
   .then(r=>r.ok?r.json():null).then(d=>{
    if(!(d&&d.ok&&d.saved))return false;
    patchFoodEntry(date,id,e=>{e.photo=d.saved;delete e.photoQueued});
@@ -398,10 +398,11 @@ async function requestFill(){
   say('Sending your log to the PC…');
   if(!await pushDeviceLogs()){say("Couldn't reach the PC — is Tailscale on?");return}
   const before=(loadAutofillState()||{}).lastRun;
-  const r=await fetch('request-fill',{method:'POST'}).catch(()=>null);
+  const r=await fetch('request-fill',{method:'POST',headers:{'Content-Type':'application/json',...CLIENT_HEADERS},body:'{}'}).catch(()=>null);
   if(!r){say("Couldn't reach the PC — is Tailscale on?");return}
   if(r.status==429){say('It just ran — try again in a minute.');return}
   if(r.status==404){say('The PC server needs a restart before Count now works.');return}
+  if(r.status==403){say('The PC refused the request (403) — reload the app to update it.');return}
   if(r.status==400){say("The PC didn't get your latest log — try again.");return}
   if(r.status!=202&&r.status!=409){say('PC error ('+r.status+').');return}
   say(r.status==409?'Already counting — hang on…':'Counting… usually under a minute.');

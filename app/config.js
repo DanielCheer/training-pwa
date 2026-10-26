@@ -75,6 +75,11 @@ const DRAFT_POLL_S=10,DRAFT_POLL_MAX_S=600,DRAFT_OVERDUE_MIN=5,DRAFT_OK=['drafte
 const IMPORTED_KEY='dj-shared-imported-ids';
 const KNOWN_INBOX_TYPES=['workout','workout-update','cardio','weigh','food-move','food-update']; // every `type` branch in applySharedEntries(); a plain food entry has no type
 
+/* Sent with every POST to the companion server (serve.py refuses a POST without it, except the
+   sendBeacon push, which can't set headers): together with the JSON/image Content-Type it means a page on
+   another origin can't make the phone's browser post to the PC. */
+const CLIENT_HEADERS={'X-Train-Client':'1'};
+
 /* Rest timer length (s). */
 const TDUR=90;
 
