@@ -122,9 +122,19 @@ const DAYS=[
   str:[{n:"World's Greatest Stretch — 5/side"},{n:"Couch stretch — 45s/side",d:"couch"},{n:"90/90 hip switch — 45s/side",d:"ninety"},{n:"Wall ankle — 30s/side"}]}}];
 
 
-/* Optional flexible-session picker (none in the demo). */
+/* Flexible-session picker: on TODAY's tab, pick whichever session you're actually training (life moves the
+   gym day around), and it replaces that date's weekday base. The next one in the rotation is suggested.
+   The demo's four sessions are its four lifting days, reused by reference (Upper A's main block is the
+   first Monday variant, since Monday's base main rotates). GYM_SESSIONS_LEGACY keeps retired session ids
+   resolvable forever; the demo has none. */
+const asSession=(id,lbl,d,main)=>({id,lbl,focus:d.focus,time:"anytime",fin:d.fin,map:d.map,note:d.note,secs:{...d.secs,...(main?{main}:{})}});
+const dayOf=k=>DAYS.find(d=>d.k===k);
 const GYM_SESSIONS_LEGACY=[];
-const GYM_SESSIONS=[];
+const GYM_SESSIONS=[
+ asSession("upA","Upper A",dayOf("mon"),MON_VARIANTS[0]),
+ asSession("lowA","Lower A",dayOf("tue")),
+ asSession("upB","Upper B",dayOf("thu")),
+ asSession("lowB","Lower B",dayOf("sat"))];
 
 /* Why tab */
 const WHY=[
@@ -136,4 +146,4 @@ const WHY=[
 /* Base epochs — which weekly base + Why tab is in effect from which local date (ascending; the first
    has from:''). The demo has one era; a program restructure adds an epoch instead of rewriting DAYS,
    so logged history keeps resolving against the week it was logged in. */
-const BASE_EPOCHS=[{from:'',days:DAYS,why:WHY}];
+const BASE_EPOCHS=[{from:'',days:DAYS,why:WHY,sessionPicker:true}];
