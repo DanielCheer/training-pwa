@@ -589,6 +589,19 @@ function bodySVG(view,hot){
  return `<svg viewBox="0 0 60 100">${r}${outline}<text class="lab" x="30" y="99">${view?"BACK":"FRONT"}</text></svg>`}
 
 
+/* ───────── DATA CONTRACT ─────────
+   Everything below reads globals the data/*.js scripts must declare (docs/data-contract.md). A
+   missing one would otherwise surface as a ReferenceError deep inside some render; name every
+   missing global at once, show the config banner, and stop the engine here. */
+const DATA_CONTRACT=['PROFILE','SERVER','SEED','GOAL','START','SEASON','fmtMD','SEASON_STR','PHASES','PHW','TOTAL_WEEKS',
+ 'BUILD_PHASE','BUILD_START','HOLD_AT_PHASE','HOLD_END_WEEK','LD_BY_NAME','TARGETS','MON_VARIANTS','TUE_MAIN_FULL','TUE_MAIN_SHORT',
+ 'TUE_CORE_FULL','TUE_CORE_SHORT','DAYS','BASE_EPOCHS','GYM_SESSIONS','GYM_SESSIONS_LEGACY','WEEK_OVERRIDES','DAY_TARGETS','TEE',
+ 'FOODS','STACK','APT'];
+(function contractGuard(){
+ const missing=DATA_CONTRACT.filter(n=>{try{return (0,eval)('typeof '+n)==='undefined'}catch(e){return true}});
+ if(missing.length){cfgFail('data/*.js is missing required global'+(missing.length>1?'s':'')+': '+missing.join(', ')+' — see docs/data-contract.md');
+  throw new Error('data contract: missing '+missing.join(', '))}})();
+
 function ldOf(name){return LD_BY_NAME[name]}
 function loadBaseOverrides(){try{return JSON.parse(localStorage.getItem('dj-plate-base')||'{}')}catch(e){return{}}}
 function saveBaseOverride(name,lb){const m=loadBaseOverrides();if(lb==null||isNaN(lb))delete m[name];else m[name]=lb;localStorage.setItem('dj-plate-base',JSON.stringify(m));schedulePush()}
