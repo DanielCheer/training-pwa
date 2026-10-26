@@ -236,11 +236,16 @@ function setFrame(d,t){for(const it of d.items){
 const CYC=2600;
 function easeC(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
 function phT(x){return x<1000?easeC(x/1000):x<1300?1:x<2300?1-easeC((x-1300)/1000):0}
-let lastF=0;
-function tickDia(now){if(!lastF)lastF=now;const dt=Math.min(50,now-lastF);lastF=now;
- for(const d of DIAS){if(!d.svg.isConnected||!d.svg.closest('.ex.open'))continue;d.acc=(d.acc+dt*d.sp)%CYC;setFrame(d,phT(d.acc))}
- requestAnimationFrame(tickDia)}
-if(!REDUCE)requestAnimationFrame(tickDia);
+/* The animation loop runs only while an OPEN exercise card shows a diagram: tog() starts it when a card
+   opens, and it stops itself on the first frame with nothing to animate (it used to run every frame
+   for as long as the app was open, mostly animating nothing). */
+let lastF=0,diaRaf=0;
+function diaShowing(d){return d.svg.isConnected&&!!d.svg.closest('.ex.open')}
+function tickDia(now){diaRaf=0;const dt=lastF?Math.min(50,now-lastF):0;lastF=now;
+ let live=0;
+ for(const d of DIAS){if(!diaShowing(d))continue;live++;d.acc=(d.acc+dt*d.sp)%CYC;setFrame(d,phT(d.acc))}
+ if(live)diaRaf=requestAnimationFrame(tickDia);else lastF=0}
+function startDiaLoop(){if(!REDUCE&&!diaRaf&&DIAS.some(diaShowing))diaRaf=requestAnimationFrame(tickDia)}
 function slomo(dv){const d=DIAS.find(x=>x.svg==dv.querySelector("svg"));if(!d)return;
  d.sp=d.sp==1?.32:1;dv.classList.toggle("slow",d.sp!=1)}
 /* real-footage escape hatch: link out to YouTube (embeds would break offline-in-the-gym) */

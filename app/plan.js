@@ -132,7 +132,7 @@ function cardioSectionHtml(){return `<div class="card">
  <div class="small">${PROFILE.cardioRules}</div>
 </div>`}
 
-function tog(id){const el=$("ex-"+id);if(el)el.classList.toggle("open")}
+function tog(id){const el=$("ex-"+id);if(el){el.classList.toggle("open");startDiaLoop()}}
 /* Surgical update, not a full renderContent() — a full re-render would wipe unsaved text
    sitting in any other exercise's log textarea just because you checked a different box. */
 function chk(id){if(dayRoll())renderDay();done[id]=!done[id];saveDone();const row=$("ex-"+id);if(!row)return;
