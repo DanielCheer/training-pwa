@@ -70,8 +70,19 @@ function setGymSession(id){
 
 
 function activeOverride(dk){dk=dk||localDayKey();return WEEK_OVERRIDES.find(o=>o.from<=dk&&dk<=o.to)||null}
+/* Program week (0-based) of a local day: whole weeks from START to that day's NOON (a DST change
+   between START and the day can't pull the first hour of a week back into the previous one),
+   clamped to the block. wkNow is this for today. */
+function progWeekOf(dk){const p=String(dk||localDayKey()).split('-');
+ return Math.min(TOTAL_WEEKS-1,Math.max(0,Math.floor((new Date(+p[0],+p[1]-1,+p[2],12)-START)/(7*864e5))))}
+/* The first base week's (DAYS) Monday main block rotates weekly through MON_VARIANTS. Resolved at
+   READ time for the date asked about: resolveWeek() used to write today's variant into DAYS, so
+   every past Monday read back as this week's variant. Later epochs' Mondays don't rotate. */
+function monVariantDay(base,dk){return {...base,secs:{...base.secs,main:MON_VARIANTS[progWeekOf(dk)%MON_VARIANTS.length]}}}
 function dayObj(k,dk){dk=dk||localDayKey();
- const base=baseDaysFor(dk).find(d=>d.k==k),o=activeOverride(dk),ov=o&&o.days[k];
+ const days=baseDaysFor(dk);let base=days.find(d=>d.k==k);
+ if(k==='mon'&&days===DAYS&&MON_VARIANTS.length)base=monVariantDay(base,dk);
+ const o=activeOverride(dk),ov=o&&o.days[k];
  let out=ov?{...base,...ov,secs:{...base.secs,...ov.secs},_ov:true}:base;
  /* v114: a gym session PICKED for this date wins over the weekday base (and over a dated override —
     a manual pick is the most specific statement of what he actually trained). Applies only to the
@@ -148,17 +159,16 @@ function dayRoll(){const t=localDayKey();if(t===doneDay)return false;
  doneDay=t;for(const k in done)delete done[k];for(const k in plateState)delete plateState[k];pruneDone();resolveWeek();return true}
 const $=id=>document.getElementById(id);
 
-/* Current program week (0-based) + phase + Monday rotation, all derived from START/PHW. Global
-   on purpose (read by the rotation, the exlog resolver, the schedule override). Extracted into
-   resolveWeek() so the midnight day-roll hook can re-run it without a reload; called at init so
-   it's set before the first renderWorkoutStats(). */
+/* Current program week (0-based) + phase, derived from START/PHW. Global on purpose (targets, hero,
+   timeline). resolveWeek() so the midnight day-roll hook can re-run it without a reload; called at
+   init so it's set before the first renderWorkoutStats(). It writes no program data: the Monday
+   rotation resolves per date in dayObj(). */
 let wkNow=0;
 function resolveWeek(){
- wkNow=Math.min(TOTAL_WEEKS-1,Math.max(0,Math.floor((new Date()-START)/(7*864e5))));
+ wkNow=progWeekOf(localDayKey());
  phase=(()=>{let c=0;for(let i=0;i<PHW.length;i++){c+=PHW[i];if(wkNow<c)return i}return PHW.length-1})();
  if(phase>=PHASES.length)phase=PHASES.length-1; // clamp if PHW/PHASES mismatch (cfgFail already fired)
  if(HOLD_AT_PHASE!=null&&phase>HOLD_AT_PHASE)phase=HOLD_AT_PHASE; // goal-gated hold — never ramp past Build into Peak/Taper while the goal is open
- DAYS.find(d=>d.k=='mon').secs.main=MON_VARIANTS[wkNow%MON_VARIANTS.length];
 }
 resolveWeek();
 /* Timeline marker week: while the program HOLDS, wkNow keeps running past the held phase's

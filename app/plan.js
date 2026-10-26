@@ -337,8 +337,7 @@ function exNameFromExlogKey(slot,date){
  const m=slot.match(EXLOG_SLOT_RX);
  if(!m)return null;
  const D=dayObj(m[1],date);if(!D)return null;
- let list=D.secs[m[2]];
- if(m[1]=='mon'&&m[2]=='main'&&!D._ov&&baseDaysFor(date)===DAYS){const wk=date?Math.max(0,Math.floor((new Date(date+'T12:00:00')-START)/(7*864e5))):wkNow;list=MON_VARIANTS[wk%MON_VARIANTS.length];} // OLD base Monday rotates weekly — resolve against the NOTE's date. V2 Monday is basketball (no rotation, main:[]) → skip.
+ const list=D.secs[m[2]]; // dayObj resolves the Monday rotation for the NOTE's date
  const idx=+m[3];return list&&list[idx]?list[idx].n:null;
 }
 function correctionNotes(){

@@ -50,7 +50,7 @@ const SHARED_EPI=`;(function(){
  cap.phasesD=PHASES.map(function(p){return p.d});
  cap.dayT=(typeof DAY_TARGETS!=='undefined')?DAY_TARGETS:null; // v104: Fuel-tab assertions derive from these
  cap.tee=(typeof TEE!=='undefined')?TEE:null;
- cap.monMain0=(DAYS.find(function(d){return d.k=='mon'}).secs.main[0]||{}).n;
+ cap.monMain0=(dayObj('mon').secs.main[0]||{}).n; // today's resolved Monday main (v122: the rotation resolves in dayObj, DAYS is never written)
  var ids=['tl','tlx','phrow','pban','cd','heroDates','wk','logTotals','dailyTargets','mealSplits','nutFoot','dtSurplus','dtTee','dtKcalMid','dtPMid'];
  cap.ids={};ids.forEach(function(id){var el=document.getElementById(id);cap.ids[id]={h:el?el.innerHTML:null,t:el?el.textContent:null}});
  cap.tlBars=(cap.ids.tl.h.match(/class="tlw/g)||[]).length;
