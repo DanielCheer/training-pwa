@@ -1,7 +1,7 @@
 :root{
   --bg:#060A0F; --card:#0D1720; --card2:#122230; --bd:#1B3040;
   --cy:#00E5D0; --or:#FF5C2E; --gr:#3DF08C; --pu:#A78BFA; --ye:#FFC93C; --rd:#FF4757;
-  --tx:#E9F5F2; --mu:#5E8490; --dim:#4F6B7A; /* --dim: faint TEXT, 3.2:1 on --card (was #2A4454, 1.8:1) */
+  --tx:#E9F5F2; --mu:#5E8490; --dim:#536F7E; /* --dim: faint TEXT, 3.40:1 on --card, 3.04:1 on --card2 (v121's #4F6B7A was 2.87:1 on card2) */
   --track:#2A4454; /* empty bar/timeline track (not text) */
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}

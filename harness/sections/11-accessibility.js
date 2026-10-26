@@ -26,10 +26,10 @@ ok(new RegExp('id="ex-'+n.probe.first+'"[\\s\\S]*?role="checkbox" aria-checked="
 const dels=all.match(/<button class="del"[^>]*>/g)||[];
 ok(dels.length>0&&dels.every(t=>/aria-label="[^"]+"/.test(t)),'every × delete button has an aria-label ('+dels.length+')');
 ok(/<button id="tmr"[^>]*aria-label="[^"]+"/.test(html)&&/aria-label="Close"[^>]*>✕/.test(html),'the rest timer and the lightbox ✕ are named');
-// contrast: --dim on --card, WCAG relative luminance
+// contrast: --dim on BOTH card backgrounds (--card and the lighter --card2), WCAG relative luminance
 const v=k=>(css.match(new RegExp('--'+k+':\\s*(#[0-9A-Fa-f]{6})'))||[])[1];
 const L=h=>{const c=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255).map(x=>x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4));return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]};
 const cr=(a,b)=>{const x=L(a),y=L(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05)};
-const ratio=cr(v('dim'),v('card'));
-ok(ratio>=3,'--dim '+v('dim')+' on --card '+v('card')+' = '+ratio.toFixed(2)+':1 (>= 3:1)');
+for(const bg of ['card','card2']){const ratio=cr(v('dim'),v(bg));
+ ok(ratio>=3,'--dim '+v('dim')+' on --'+bg+' '+v(bg)+' = '+ratio.toFixed(2)+':1 (>= 3:1)')}
 };
