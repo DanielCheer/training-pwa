@@ -601,9 +601,12 @@ const EXLOG_SLOT_RX=new RegExp('^('+DAYS.map(d=>d.k).join('|')+')('+SECTIONS.map
 /* sanityCheck() runs below, AFTER WEEK_OVERRIDES is defined, so it can validate override days too. */
 
 
-/* Which base is in effect for a given local day (defaults to today). dayObj + exNameFromExlogKey
-   both route through this, so today's render AND historical note resolution pick the right era. */
-function baseDaysFor(dk){return (dk||localDayKey())>=BASE_V2_FROM?DAYS_V2:DAYS;}
+/* Which base epoch (BASE_EPOCHS in data/program.js: weekly base + Why tab + options) is in effect for
+   a local day (defaults to today). dayObj + exNameFromExlogKey both route through this, so today's
+   render AND historical note resolution pick the right era. Epochs are ascending by `from`; the
+   first has from:'' (validated in sanityCheck). */
+function epochFor(dk){dk=dk||localDayKey();let ep=BASE_EPOCHS[0];for(const e of BASE_EPOCHS)if(e.from&&dk>=e.from)ep=e;return ep}
+function baseDaysFor(dk){return epochFor(dk).days}
 
 const WD_KEYS=["sun","mon","tue","wed","thu","fri","sat"];
 function wdKeyOf(dk){const p=String(dk||'').split('-');return WD_KEYS[new Date(+p[0],+p[1]-1,+p[2],12).getDay()]}
@@ -650,20 +653,23 @@ function dayObj(k,dk){dk=dk||localDayKey();
 (function sanityCheck(){
  if(PHW.length!==PHASES.length)cfgFail('PHW has '+PHW.length+' entries but PHASES has '+PHASES.length+' — every phase needs a week count.');
  const chk=(list,where)=>(list||[]).forEach(e=>{if(e&&Array.isArray(e.rx)&&e.rx.length!==1&&e.rx.length!==PHASES.length)cfgFail('"'+e.n+'" ('+where+'): '+e.rx.length+' rx entries — needs 1 or '+PHASES.length+'.')});
- DAYS.forEach(d=>Object.entries(d.secs).forEach(([sname,l])=>chk(l,d.k+'/'+sname)));
- DAYS_V2.forEach(d=>Object.entries(d.secs).forEach(([sname,l])=>chk(l,'v2 '+d.k+'/'+sname)));
+ const dRx=/^\d{4}-\d{2}-\d{2}$/;
+ if(!Array.isArray(BASE_EPOCHS)||!BASE_EPOCHS.length||BASE_EPOCHS[0].from!=='')cfgFail('BASE_EPOCHS must be a non-empty list whose first epoch has from:"".');
+ (BASE_EPOCHS||[]).forEach((ep,i)=>{
+  if(i&&(!dRx.test(ep.from||'')||ep.from<=BASE_EPOCHS[i-1].from))cfgFail('BASE_EPOCHS['+i+'].from "'+ep.from+'" must be YYYY-MM-DD and after the previous epoch.');
+  if(!Array.isArray(ep.days)||!Array.isArray(ep.why))cfgFail('BASE_EPOCHS['+i+'] needs days[] and why[].');
+  (ep.days||[]).forEach(d=>Object.entries(d.secs).forEach(([sname,l])=>chk(l,(i?'v'+(i+1)+' ':'')+d.k+'/'+sname)))});
  MON_VARIANTS.forEach((v,i)=>chk(v,'mon variant '+(i+1)));
  chk(TUE_MAIN_SHORT,'tue short main');chk(TUE_CORE_SHORT,'tue short core');
  // every TARGETS key must resolve a load type, or fmtTarget can't derive its unit (rename footgun)
  Object.keys(TARGETS).forEach(n=>{if(!ldOf(n))cfgFail('TARGETS "'+n+'" has no load type in LD_BY_NAME — target unit can\'t be derived (renamed?).');});
- const dRx=/^\d{4}-\d{2}-\d{2}$/;
  WEEK_OVERRIDES.forEach((o,i)=>{
   if(!dRx.test(o.from||'')||!dRx.test(o.to||''))cfgFail('WEEK_OVERRIDES['+i+'] bad date range "'+o.from+'".."'+o.to+'" — need YYYY-MM-DD or it never activates.');
   Object.entries(o.days||{}).forEach(([dk,dv])=>Object.entries((dv&&dv.secs)||{}).forEach(([sname,l])=>chk(l,'override '+dk+'/'+sname)));
  });
 })();
 
-function whyList(){return localDayKey()>=BASE_V2_FROM?WHY_V2:WHY;}
+function whyList(){return epochFor().why}
 
 
 
@@ -755,7 +761,7 @@ function renderDay(){
  /* v114: on TODAY's tab the row becomes the 3-day gym-session picker — tap whichever session you're
     doing, on whatever day you're in the gym. The un-picked default highlights nextSession() so the
     rotation self-advances. Other day tabs keep the old Tuesday full/short toggle. */
- if(day===wdKeyOf(localDayKey())&&localDayKey()>=BASE_V2_FROM){
+ if(day===wdKeyOf(localDayKey())&&epochFor().sessionPicker){
   const cur=pickedSession(),sug=nextSession();
   tt.style.display="flex";
   tt.innerHTML=GYM_SESSIONS.map(s=>`<button class="${cur===s.id?'on':''}" onclick="setGymSession('${s.id}')">${s.lbl}${!cur&&s.id===sug?' ·next':''}</button>`).join('')

@@ -122,9 +122,6 @@ const DAYS=[
  secs:{warm:[],power:[],main:[],core:[],
   str:[{n:"World's Greatest Stretch — 5/side"},{n:"Couch stretch — 45s/side",d:"couch"},{n:"90/90 hip switch — 45s/side",d:"ninety"},{n:"Wall ankle — 30s/side"}]}}];
 
-/* One base for the whole demo — there is no second era yet. */
-const BASE_V2_FROM="9999-12-31";
-const DAYS_V2=DAYS;
 
 /* Optional flexible-session picker (none in the demo). */
 const GYM_SESSIONS_LEGACY=[];
@@ -136,4 +133,8 @@ const WHY=[
 {t:"Upper A / Upper B",c:"var(--or)",b:"Pressing is the weak point, so both upper days lead with a press — flat bench on Monday, incline on Thursday — and pull-ups get two exposures a week."},
 {t:"Lower A / Lower B",c:"var(--gr)",b:"Tuesday is squat-led, Saturday is hinge-led with jumps first. Between them every big lower-body pattern is trained twice."},
 {t:"The rules that protect the whole thing",c:"var(--ye)",b:"1) Add weight only when every set hits the top of the rep range with clean form. 2) Weaker side first on single-leg work. 3) Sharp pain means stop that exercise, not push through. 4) Sleep 7–8 h — you grow between sessions, not during them."}];
-const WHY_V2=WHY;
+
+/* Base epochs — which weekly base + Why tab is in effect from which local date (ascending; the first
+   has from:''). The demo has one era; a program restructure adds an epoch instead of rewriting DAYS,
+   so logged history keeps resolving against the week it was logged in. */
+const BASE_EPOCHS=[{from:'',days:DAYS,why:WHY}];
