@@ -169,9 +169,10 @@ function renderFoodLog(){
   const draftTxt=!e.pending?'':sameDraftInputs(e)
    ?` · <b style="color:var(--tx)">≈${Math.round(e.draft.kcal)} kcal</b> · ${Math.round(e.draft.p)}P ${Math.round(e.draft.c)}C ${Math.round(e.draft.f)}F <span style="color:var(--mu)">draft</span>`
    :ds?` · <span style="color:var(--mu)">draft: ${escHtml(ds.reason)}</span>`
-   :e.photoQueued&&!e.photo?'':' · <span style="color:var(--mu)">drafting…</span>';
+   :(e.photoQueued&&!e.photo)||!serverHas('drafts')?'':' · <span style="color:var(--mu)">drafting…</span>'; // no drafts without the PC (static demo)
+  const counter=serverHas('autofill')?'counted by the nightly auto-fill or “Count now”':'not counted until it has numbers: tap it to type them';
   const sub=e.pending
-   ?`<div class="small" style="color:var(--ye)">⏳ pending${draftTxt} — counted by the nightly auto-fill or “Count now”${e.photoQueued?' · photo waiting to upload':''}${skipped[e.id]?`<br><span style="color:var(--or)">last run skipped it: ${escHtml(skipped[e.id])}</span>`:''}</div>`
+   ?`<div class="small" style="color:var(--ye)">⏳ pending${draftTxt} — ${counter}${e.photoQueued?' · photo waiting to upload':''}${skipped[e.id]?`<br><span style="color:var(--or)">last run skipped it: ${escHtml(skipped[e.id])}</span>`:''}</div>`
    :`<div class="small">${e.kcal} kcal · ${e.p}g P · ${e.c}g C · ${e.f}g F${e.draft&&isFinite(e.draft.kcal)?` <span style="color:var(--dim)">· draft was ≈${Math.round(e.draft.kcal)}</span>`:''}</div>`;
   if(e.id===_foodEdit)return `<div class="logentry" style="align-items:flex-start">${thumb}${foodEditForm(e)}<button class="del" aria-label="Delete meal" onclick="delFoodLogEntry(${i})">×</button></div>`;
   return `<div class="logentry" style="align-items:center">${thumb}<div style="flex:1;cursor:pointer" onclick="editFoodLogEntry(${i})"><div class="logtxt" style="font-weight:700;text-decoration:underline dotted;text-underline-offset:3px">${escHtml(e.n||'Photo meal')}${e.src=='c'?' <span class="flag" style="background:#07201D;color:var(--cy)">C</span>':''}</div>${sub}</div><button class="del" aria-label="Delete meal" onclick="delFoodLogEntry(${i})">×</button></div>`;
