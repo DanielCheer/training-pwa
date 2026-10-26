@@ -28,7 +28,7 @@ function targetLine(name){
  const t=ldOf(name);if(!t)return '';            // unclassified (warm-up/stretch) → nothing
  const c=LOAD_TYPES[t],tg=TARGETS[name],MU='var(--mu)';
  const wrap=(txt,col)=>`<div class="r" style="color:${col};font-weight:700;margin-top:2px">🎯 ${txt}</div>`;
- const w=Math.min(Math.max(wkNow-BUILD_START,0),PHW[BUILD_PHASE]-1); // weeks into Build (0-based) — hoisted, used by the seeded + alts branches
+ const w=Math.min(Math.max(wkNow-BUILD_START,0),PHW[BUILD_PHASE]-1); // weeks into Build (0-based)
  const wkTag=inBuild?(PHW[BUILD_PHASE]>1?` <span style="color:${MU};font-weight:600">· wk ${w+1} of Build</span>`:''):` <span style="color:${MU};font-weight:600">· working weight</span>`;
  /* Real logged history beats every seeded number below — including a stale guardrail hold,
     since what he actually lifted IS the current truth. Seeds/guardrails only apply with no history. */
@@ -40,8 +40,6 @@ function targetLine(name){
  if(tg&&tg.hold)                                // guardrail lift (a string hold is the reason shown) — conservative, never ramp
   return wrap((tg.t0!=null?'hold ~'+fmtTarget(name,tg.t0):'establish light')
     +` <span style="color:${MU};font-weight:600">· ${typeof tg.hold=='string'?tg.hold+' — ':''}keep conservative</span>`,'var(--or)');
- if(tg&&tg.alts)                                // one either-or slot, two different loads (Cable Fly vs Pec Deck) → show both, each ramped
-  return wrap(tg.alts.map(a=>'~'+fmtTarget(name,a.t0+(a.inc||0)*w)+' '+a.lbl).join(' / ')+wkTag,'var(--gr)');
  if(tg&&tg.t0!=null){                           // seeded → current-week ramped number
   const val=tg.t0+(tg.inc||0)*w;
   // a NEGATIVE bw target is assistance (v106): progress is the assist shrinking, so say so instead of a week tag
