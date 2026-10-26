@@ -126,7 +126,26 @@ document.addEventListener('visibilitychange',()=>{
  if(fd!==foodDaySig){foodDaySig=fd;renderFoodLog();renderMealHistory();renderDayReview()}});
 let foodDaySig=todayKey();
 
-/* Offline shell. Only registers over http(s) — file:// silently skips. */
+/* Offline shell. Only registers over http(s) — file:// silently skips.
+   Updates land in ONE launch: sw.js skips waiting + claims, so a new VERSION takes over this page and
+   fires `controllerchange`. Right after launch (nothing typed yet) the page just reloads onto the new
+   shell; later, or with unsaved text in any field, it offers a reload instead of throwing that text
+   away. The very first install also fires controllerchange (no controller → one) — not an update. */
+const BOOT_AT=Date.now(),SW_AUTO_RELOAD_MS=5000;
+function hasUnsavedText(){ // a field whose value differs from what it was rendered with = typed, not saved
+ return [...document.querySelectorAll('textarea,input')].some(el=>!['file','hidden','checkbox','radio','button','submit'].includes(el.type)&&el.value!==el.defaultValue)}
+function showUpdateToast(){
+ if($("swToast"))return;
+ const t=document.createElement('div');t.id='swToast';t.className='toast';t.setAttribute('role','status');
+ t.innerHTML='<span>New version ready</span><button type="button" onclick="location.reload()">Reload</button>';
+ document.body.appendChild(t)}
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
+ const hadController=!!navigator.serviceWorker.controller;let reloading=false;
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{
+  if(!hadController||reloading)return;
+  if(Date.now()-BOOT_AT<SW_AUTO_RELOAD_MS&&!hasUnsavedText()){reloading=true;location.reload()}
+  else showUpdateToast()});
+ window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').then(reg=>{
+  // a PWA resumed from the background isn't a navigation, so the browser won't look for a new sw.js by itself
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})})}).catch(()=>{})});
 }

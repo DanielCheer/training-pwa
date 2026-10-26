@@ -404,8 +404,8 @@ function exportWorkoutCSV(){
 function loadSyncedIds(){try{return new Set(JSON.parse(localStorage.getItem('dj-workout-log-synced')||'[]'))}catch(e){return new Set()}}
 function loadFoodSyncedIds(){try{return new Set(JSON.parse(localStorage.getItem('dj-food-synced-ids')||'[]'))}catch(e){return new Set()}}
 function loadSheetUrl(){return localStorage.getItem('dj-sheet-url')||''}
-function saveSheetUrl(){localStorage.setItem('dj-sheet-url',$("sheetUrlIn").value.trim());schedulePush()}
-function renderSheetUrl(){const el=$("sheetUrlIn");if(el)el.value=loadSheetUrl()}
+function saveSheetUrl(){const el=$("sheetUrlIn");localStorage.setItem('dj-sheet-url',el.value.trim());el.defaultValue=el.value;schedulePush()}
+function renderSheetUrl(){const el=$("sheetUrlIn");if(el)el.value=el.defaultValue=loadSheetUrl()} // defaultValue = the saved value, so hasUnsavedText() doesn't count it as typing
 /* Sends workout AND food rows in one POST — apps-script.gs (v2) files them into separate
    "Workouts"/"Food" tabs on the same sheet. Entries logged before ids existed (id undefined)
    are simply never eligible to sync — CSV export still has them, this only affects the Sheet. */

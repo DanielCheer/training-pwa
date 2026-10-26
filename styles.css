@@ -98,6 +98,9 @@ nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;st
 /* timer */
 #tmr{position:fixed;right:14px;bottom:92px;z-index:60;background:var(--card2);border:1px solid var(--cy);color:var(--cy);border-radius:999px;padding:11px 17px;font-weight:800;font-size:15px;box-shadow:0 4px 14px rgba(0,0,0,.5);transform:translateZ(0);will-change:transform}/* same GPU-layer promotion as nav so the timer doesn't detach on momentum scroll (v75) */
 #tmr.run{background:var(--cy);color:#00110F}
+/* "New version ready" — shown when a service-worker update lands mid-session */
+.toast{position:fixed;left:14px;right:14px;bottom:calc(92px + env(safe-area-inset-bottom));max-width:492px;margin:0 auto;z-index:150;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card2);border:1px solid var(--cy);border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.toast button{background:var(--cy);color:#00110F;font-weight:800;border-radius:8px;padding:8px 14px;font-size:13px}
 .small{font-size:12.5px;color:var(--mu);line-height:1.55}
 .gcard{border:1px solid #14532D;background:#071410}
 .gcard .stitle{color:var(--gr)}

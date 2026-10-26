@@ -43,6 +43,15 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+/* Offline and not in the cache. respondWith() must always get a Response: a page navigation (any URL
+   in scope, e.g. one with a query string) falls back to the cached app shell; anything else is an
+   explicit 503 instead of an undefined that the browser turns into a network error. */
+function offlineMiss(req) {
+  const empty = () => new Response('', { status: 503, statusText: 'Offline' });
+  if (req.mode !== 'navigate') return empty();
+  return caches.match('./index.html').then((page) => page || empty());
+}
+
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   if (e.request.url.includes('shared-log.json')) return; // network-only, DJ's phone must see new entries the moment they're added
@@ -62,7 +71,7 @@ self.addEventListener('fetch', (e) => {
           }
           return res;
         })
-        .catch(() => hit);
+        .catch(() => hit || offlineMiss(e.request));
 
       return hit || live;
     })
