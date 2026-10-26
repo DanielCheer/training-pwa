@@ -5,8 +5,8 @@
    RIGHT number at entry: a barbell TOTAL vs plates-per-side (×2), a dumbbell
    per-hand, a box height in inches, or bodyweight = reps only. Fixes the class
    of error from Fri 07-24 (box jump logged in lbs, hack squat logged per-side).
-   Tags are keyed by exercise NAME — stable across the Monday rotation and the
-   Tuesday full/short swap, unlike slot ids. A name absent from LD_BY_NAME falls
+   Tags are keyed by exercise NAME — stable across the Monday rotation,
+   overrides and gym sessions, unlike slot ids. A name absent from LD_BY_NAME falls
    back to today's plain "weight (lb)" input (safety net, nothing breaks). */
 const LOAD_TYPES={
  bar:  {lbl:"bar",       base:45, dbl:true,  plates:true},

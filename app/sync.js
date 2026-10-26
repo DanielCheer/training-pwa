@@ -130,7 +130,7 @@ function syncServerSyncedIds(){
  }).catch(()=>{})}
 
 /* Device push — the reverse of the shared-log inbox: the phone snapshots every dj-* localStorage
-   key (plus session state: checkmarks, day/section, Tuesday mode) and POSTs it to /push-logs on
+   key (plus session state: checkmarks, day/section, phase) and POSTs it to /push-logs on
    this app's own server, which writes it to device-logs.json on disk where Claude can read it.
    That's what lets Claude answer "what's checked off?" / run exports without a manual End Day.
    Fails silent offline like everything else here. Checkmarks are a snapshot as-of pushedAt;
@@ -140,7 +140,7 @@ function gatherDeviceLogs(){
  const ls={};
  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
   if(k&&k.startsWith('dj-'))ls[k]=localStorage.getItem(k)}
- return {v:1,pushedAt:new Date().toISOString(),seq:pushSeq+1,day,sec,phase,tueMode,done:{...done},ls}}
+ return {v:2,pushedAt:new Date().toISOString(),seq:pushSeq+1,day,sec,phase,done:{...done},ls}} // v2 (v122): the dead Tuesday toggle's `tueMode` is gone
 /* The server refuses a snapshot older than the one it holds (409 {state:'stale-seq', seq}) — this phone's
    counter fell behind (cleared site data, another device). Adopt max(stored, own) so the retry sends the
    next number, and retry once. */

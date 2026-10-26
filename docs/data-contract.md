@@ -80,7 +80,6 @@ demo works offline.
 | `LD_BY_NAME` | `{exerciseName: loadType}` | load types from `LOAD_TYPES` in `app/config.js` |
 | `TARGETS` | `{exerciseName: {t0, inc?, hold?}}` | Build-phase 🎯 seeds; `hold` = never ramp (a string is the reason shown); every key needs a load type |
 | `MON_VARIANTS` | `[[exercise…], …]` | Monday's main block rotates weekly through these (`DAYS` Monday) |
-| `TUE_MAIN_FULL/SHORT`, `TUE_CORE_FULL/SHORT` | exercise lists | the Tuesday full/short toggle |
 | `DAYS` | 7 day objects, keys `mon`…`sun` | the first base week |
 | `BASE_EPOCHS` | `[{from, days, why, sessionPicker?}]` | ascending; the first has `from:''`; history resolves through the epoch of its own date |
 | `GYM_SESSIONS`, `GYM_SESSIONS_LEGACY` | `[{id, lbl, focus, …, secs}]` | flexible-session picker (epochs with `sessionPicker`); legacy ids stay resolvable forever |
@@ -106,3 +105,10 @@ marker `dj-seeded`, so it never runs twice or overwrites data.
 
 All keys start with `dj-` (`LS_NS`). It is a contract with the companion server (the device-logs push
 mirrors every `dj-` key; `food_common.py` reads them), so it stays `dj-` for every profile.
+
+## Device push payload
+
+`POST /push-logs` body: `{v, pushedAt, seq, day, sec, phase, done, ls}`, where `ls` is every `dj-`
+localStorage key and `done` today's checkmarks. `v` is 2 since v122, which dropped `tueMode` (the old
+Tuesday full/short toggle). Nothing on the PC side reads `v`, `day`, `sec`, `phase` or `done`; the
+server checks `pushedAt`, `ls` and the integer `seq` (see docs/agent-contracts.md).

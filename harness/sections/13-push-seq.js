@@ -14,13 +14,14 @@ const scenario=async(label,replies,ownSeq)=>{
  await settle(); // let the boot-time foreground sync (default fetch stub: offline) finish first
  const C=n.ctx,sent=[];
  C.fetch=(url,o)=>{if(url!=='push-logs')return Promise.resolve({ok:false,status:404,json:()=>Promise.resolve(null)});
-  const b=JSON.parse(o.body);sent.push({seq:b.seq,hdr:o.headers});const r=replies[Math.min(sent.length-1,replies.length-1)];
+  const b=JSON.parse(o.body);sent.push({seq:b.seq,hdr:o.headers,v:b.v,keys:Object.keys(b).sort().join()});const r=replies[Math.min(sent.length-1,replies.length-1)];
   return Promise.resolve({ok:r.status===200,status:r.status,json:()=>Promise.resolve(r.body)})};
  let res;C.pushDeviceLogs().then(v=>{res=v});await settle();
  return {res,sent,stored:C.localStorage.getItem('dj-push-seq'),last:C.localStorage.getItem('dj-push-last')};
 };
 let r=await scenario('in step',[{status:200,body:{ok:true}}],7);
 ok(r&&r.res===true&&r.sent.length===1&&r.sent[0].seq===8&&r.stored==='8','in step: sends own+1 (8), 200 → seq stored as 8');
+ok(r&&r.sent[0].v===2&&r.sent[0].keys==='day,done,ls,phase,pushedAt,sec,seq,v','payload v2: day, done, ls, phase, pushedAt, sec, seq, v (no tueMode) — '+(r&&r.sent[0].keys));
 ok(r&&r.sent[0].hdr['X-Train-Client']==='1'&&r.sent[0].hdr['Content-Type']==='application/json','the push carries Content-Type: application/json + X-Train-Client');
 r=await scenario('behind',[{status:409,body:{ok:false,state:'stale-seq',seq:40}},{status:200,body:{ok:true}}],3);
 ok(r&&r.res===true&&r.sent.map(s=>s.seq).join()==='4,41'&&r.stored==='41'&&!!r.last,'behind (own 3, server 40): 409 → adopts 40, retries once with 41, stores 41, marks synced ('+(r&&r.sent.map(s=>s.seq).join())+')');

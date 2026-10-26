@@ -57,7 +57,7 @@ const TARGETS={
  "Box Jump":{t0:24}
 };
 
-/* Tuesday (lower A) has a full and a short version, toggled per week on the Tuesday tab. */
+/* Tuesday (lower A) main + core, named so an override can reuse them by reference. */
 const TUE_MAIN_FULL=[
  {n:"Barbell Back Squat",d:"squat",rx:["3×8 · leave 2 in the tank","4×6–8 · +5 lb/wk","4×5 heavier","2×5 light"],t:["Quads","Glutes","Core"],y:"The main lower-body strength lift — most of the leg mass this block builds comes from here.",c:"Brace before you descend, knees track over the toes, stand up through the whole foot."},
  {n:"Romanian Deadlift",d:"rdl",rx:["3×8","4×8 +load","4×6 heavier","2×8"],t:["Hamstrings","Glutes"],y:"Hamstrings trained long, which is where they're weakest and where they grow.",c:"Soft knees, hips back, bar close to the legs. Stop when the hamstrings are fully stretched."},
@@ -65,8 +65,6 @@ const TUE_MAIN_FULL=[
  {n:"Lying Hamstring Curl",d:"hamcurl",rx:["3×10","3×10 +load","3×8 heavier","2×10"],t:["Hamstrings"],y:"Knee-flexion work the RDL doesn't cover — a balanced hamstring needs both.",c:"Hips pressed into the pad, squeeze at the top, slow on the way down."}];
 const TUE_CORE_FULL=[
  {n:"Hollow Hold",d:"hollow",rx:["3×20–30s"],t:["Abs","Core"],y:"Teaches the trunk to stay rigid — the same brace a heavy squat needs.",c:"Lower back pressed into the floor the whole time; bend the knees to make it easier."}];
-const TUE_MAIN_SHORT=[TUE_MAIN_FULL[0],TUE_MAIN_FULL[1]];
-const TUE_CORE_SHORT=TUE_CORE_FULL;
 
 /* Monday's main block rotates weekly through these variants (one here, so it's the same each week). */
 const MON_VARIANTS=[

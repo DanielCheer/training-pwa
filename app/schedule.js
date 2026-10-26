@@ -14,8 +14,8 @@ function localDayKey(){return fmtDayKey(new Date())}
    missing one would otherwise surface as a ReferenceError deep inside some render; name every
    missing global at once, show the config banner, and stop the engine here. */
 const DATA_CONTRACT=['PROFILE','SERVER','SEED','GOAL','START','SEASON','fmtMD','SEASON_STR','PHASES','PHW','TOTAL_WEEKS',
- 'BUILD_PHASE','BUILD_START','HOLD_AT_PHASE','HOLD_END_WEEK','LD_BY_NAME','TARGETS','MON_VARIANTS','TUE_MAIN_FULL','TUE_MAIN_SHORT',
- 'TUE_CORE_FULL','TUE_CORE_SHORT','DAYS','BASE_EPOCHS','GYM_SESSIONS','GYM_SESSIONS_LEGACY','WEEK_OVERRIDES','DAY_TARGETS','TEE',
+ 'BUILD_PHASE','BUILD_START','HOLD_AT_PHASE','HOLD_END_WEEK','LD_BY_NAME','TARGETS','MON_VARIANTS','DAYS',
+ 'BASE_EPOCHS','GYM_SESSIONS','GYM_SESSIONS_LEGACY','WEEK_OVERRIDES','DAY_TARGETS','TEE',
  'FOODS','STACK','APT'];
 (function contractGuard(){
  const missing=DATA_CONTRACT.filter(n=>{try{return (0,eval)('typeof '+n)==='undefined'}catch(e){return true}});
@@ -96,7 +96,6 @@ function dayObj(k,dk){dk=dk||localDayKey();
   if(!Array.isArray(ep.days)||!Array.isArray(ep.why))cfgFail('BASE_EPOCHS['+i+'] needs days[] and why[].');
   (ep.days||[]).forEach(d=>Object.entries(d.secs).forEach(([sname,l])=>chk(l,(i?'v'+(i+1)+' ':'')+d.k+'/'+sname)))});
  MON_VARIANTS.forEach((v,i)=>chk(v,'mon variant '+(i+1)));
- chk(TUE_MAIN_SHORT,'tue short main');chk(TUE_CORE_SHORT,'tue short core');
  // every TARGETS key must resolve a load type, or fmtTarget can't derive its unit (rename footgun)
  Object.keys(TARGETS).forEach(n=>{if(!ldOf(n))cfgFail('TARGETS "'+n+'" has no load type in LD_BY_NAME — target unit can\'t be derived (renamed?).');});
  WEEK_OVERRIDES.forEach((o,i)=>{
@@ -124,7 +123,7 @@ function whyList(){return epochFor().why}
    that carry a video instead of a `d:` key still show a figure. Explicit `e.d` always wins. */
 function diaFor(name){if(!name)return null;for(let i=0;i<DIA_HINTS.length;i++)if(DIA_HINTS[i][0].test(name))return DIA_HINTS[i][1];return null;}
 function diaKey(e){return (e&&e.d)||diaFor(e&&e.n);}
-let day="tue",phase=0,sec="warm",tueMode="full";
+let day="tue",phase=0,sec="warm";
 /* Reopen where you left off TODAY (survives the reload iOS forces on returning from a reel /
    backgrounding), else default to today's actual weekday instead of always Tuesday. */
 function saveView(){try{localStorage.setItem('dj-view',JSON.stringify({day,sec,dayKey:localDayKey()}))}catch(e){}}
@@ -183,28 +182,21 @@ function setDay(k){day=k;const S=dayObj(k).secs;
  sec=(SECTIONS.find(s=>(S[s.k]||[]).length)||SECTIONS[SECTIONS.length-1]).k;
  renderDayRow();renderDay();saveView()}
 
-function setTueMode(m){
- tueMode=m;const D=DAYS.find(d=>d.k=='tue');
- D.secs.main=m=='full'?TUE_MAIN_FULL:TUE_MAIN_SHORT;
- D.secs.core=m=='full'?TUE_CORE_FULL:TUE_CORE_SHORT;
- renderDay()}
 function renderDay(){
  const D=dayObj(day);
  $("dfocus").textContent=D.focus;
  $("dmeta").textContent="⏰ "+D.time+" · finish: "+(D.fin||"stairmaster 10–20 min → sauna 15–20 min");
  $("mmap").innerHTML=bodySVG(0,D.map)+bodySVG(1,D.map);
- const tt=$("tueToggle");
- /* v114: on TODAY's tab the row becomes the 3-day gym-session picker — tap whichever session you're
-    doing, on whatever day you're in the gym. The un-picked default highlights nextSession() so the
-    rotation self-advances. Other day tabs keep the old Tuesday full/short toggle. */
+ const tt=$("sessRow");
+ /* v114: on TODAY's tab, in an epoch with sessionPicker, this row is the gym-session picker — tap
+    whichever session you're doing, on whatever day you're in the gym. The un-picked default
+    highlights nextSession() so the rotation self-advances. Hidden everywhere else. */
  if(day===wdKeyOf(localDayKey())&&epochFor().sessionPicker){
   const cur=pickedSession(),sug=nextSession();
   tt.style.display="flex";
   tt.innerHTML=GYM_SESSIONS.map(s=>`<button class="${cur===s.id?'on':''}" onclick="setGymSession('${s.id}')">${s.lbl}${!cur&&s.id===sug?' ·next':''}</button>`).join('')
    +`<button class="${cur?'':'on'}" onclick="setGymSession('')">No gym</button>`;
  }
- else if(D.k=='tue'&&!D._ov){tt.style.display="flex";
-  tt.innerHTML=`<button class="${tueMode=='full'?'on':''}" onclick="setTueMode('full')">Full Session</button><button class="${tueMode=='short'?'on':''}" onclick="setTueMode('short')">Short — Vball Day</button>`}
  else tt.style.display="none";
  const S=D.secs;
  const tabs=SECTIONS.map(s=>[s.k,s.lbl,(S[s.k]||[]).length]).filter(t=>t[2]||SECTIONS.find(s=>s.k==t[0]).always);
