@@ -45,6 +45,30 @@ function cfgFail(msg){
   b.textContent='⚠ CONFIG ERROR: '+msg;document.body.appendChild(b)}catch(e){}
 }
 
+/* Persistent in-app banners (stacked at the top, one per id; showing an id again updates it). tone
+   'error' stays until reload; 'warn' has a dismiss button. */
+function appBanner(id,msg,tone){
+ try{let box=document.getElementById('banners');
+  if(!box){box=document.createElement('div');box.id='banners';box.className='banners';document.body.appendChild(box)}
+  let b=document.getElementById('banner-'+id);
+  if(!b){b=document.createElement('div');b.id='banner-'+id;b.setAttribute('role','alert');box.appendChild(b)}
+  b.className='banner '+(tone==='warn'?'warn':'error');b.textContent=msg;
+  if(tone==='warn'){const x=document.createElement('button');x.type='button';x.textContent='✕';x.setAttribute('aria-label','Dismiss');
+   x.onclick=()=>b.remove();b.appendChild(x)}
+ }catch(e){console.error('banner '+id+': '+msg)}}
+
+/* Every app write to localStorage goes through lsSet(). A full store throws QuotaExceededError out of
+   the middle of a save, so a logged set or meal silently never persisted (and the code after the
+   write never ran). lsSet catches exactly that error, shows a persistent banner naming what was lost
+   and returns false; any other error still throws. */
+function isQuotaError(e){return !!e&&(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22||e.code===1014)}
+function lsSet(k,v){
+ try{localStorage.setItem(k,v);return true}
+ catch(e){if(!isQuotaError(e))throw e;
+  console.error('localStorage is full: '+k+' was not saved');
+  appBanner('quota','⚠ Storage for the app is full on this phone, so the last change ('+k+') was NOT saved. Export your workout and meal logs, then clear old data.','error');
+  return false}}
+
 /* Fallback diagram key by exercise name (diaFor) — an explicit `d:` on the exercise always wins. */
 const DIA_HINTS=[[/kb conditioning complex/i,"kbcx"],[/tibialis/i,"tibraise"],[/ankle dorsiflexion/i,"wallankle"],[/bulletproof knee/i,"kneeiso"],[/cat-?cow/i,"catcow"],[/child'?s pose/i,"childp"],[/wall ankle/i,"wallankle"],[/standing quad|quad stretch/i,"quadstr"],[/hamstring/i,"hamstr"],[/thoracic/i,"thoracic"],[/figure-?4/i,"pigeon"],[/world'?s greatest/i,"kneel"],[/wall slide|arm circle/i,"pullapart"],[/suicide|volleyball|basketball|pickleball|jump rope|\bbike\b|\brow\b/i,"run"]];
 

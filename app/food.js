@@ -7,9 +7,9 @@ function saveBW(){
  const ex=entries.find(e=>e.d===d);
  if(ex)ex.w=v;else entries.push({d,w:v});
  entries.sort((a,b)=>b.d.localeCompare(a.d));
- localStorage.setItem('dj-bw-log',JSON.stringify(entries));
+ lsSet('dj-bw-log',JSON.stringify(entries));
  inp.value="";renderBW();schedulePush()}
-function delBW(i){const entries=loadBW();entries.splice(i,1);localStorage.setItem('dj-bw-log',JSON.stringify(entries));renderBW();schedulePush()}
+function delBW(i){const entries=loadBW();entries.splice(i,1);lsSet('dj-bw-log',JSON.stringify(entries));renderBW();schedulePush()}
 /* Weigh-in edit — an inline form on the row (date + weight), replacing the old date-only prompt().
    Invalid input keeps the old entry and says why; one weigh-in per date stays the rule. */
 let _bwEditD=null; // date key of the weigh-in row being edited
@@ -26,7 +26,7 @@ function saveBWEdit(){
  if(bad.length){if(er)er.textContent=bad.join(' · ')+' — nothing changed.';return}
  cur.d=nd;cur.w=w;_bwEditD=null;
  entries.sort((a,b)=>b.d.localeCompare(a.d));
- localStorage.setItem('dj-bw-log',JSON.stringify(entries));
+ lsSet('dj-bw-log',JSON.stringify(entries));
  renderBW();schedulePush()}
 function bwEditForm(e){
  return `<form class="ef" onsubmit="event.preventDefault();saveBWEdit()" style="flex:1">
@@ -54,10 +54,10 @@ function addCardio(activity){
  if(!min||min<=0){if(inp)inp.focus();return}
  const log=loadCardioLog();
  log.push({id:'cd-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),date:localDayKey(),activity,min});
- localStorage.setItem('dj-cardio-log',JSON.stringify(log));
+ lsSet('dj-cardio-log',JSON.stringify(log));
  if(inp)inp.value='';
  renderCardio();schedulePush()}
-function delCardio(id){localStorage.setItem('dj-cardio-log',JSON.stringify(loadCardioLog().filter(e=>e.id!==id)));renderCardio();schedulePush()}
+function delCardio(id){lsSet('dj-cardio-log',JSON.stringify(loadCardioLog().filter(e=>e.id!==id)));renderCardio();schedulePush()}
 function renderCardio(){
  const el=$("cardioList");if(!el)return;
  const log=loadCardioLog();
@@ -78,10 +78,10 @@ function addFood(idx){
  const entry={id:newFoodId(),at:new Date().toISOString(),n:f[0]+(qty!=1?" ×"+qty:""),kcal:r1(f[1]*qty),p:r1(f[2]*qty),c:r1(f[3]*qty),f:r1(f[4]*qty)};
  NUTRIENTS.forEach(nu=>{if(typeof f[nu.ti]=='number')entry[nu.k]=r1(f[nu.ti]*qty)});
  log.push(entry);
- localStorage.setItem('dj-foodlog-'+todayKey(),JSON.stringify(log));
+ lsSet('dj-foodlog-'+todayKey(),JSON.stringify(log));
  renderFoodLog();schedulePush()}
 function newFoodId(){return 'f-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)}
-function delFoodLogEntry(i){const log=loadFoodLog(),e=log[i];if(!e)return;if(e.photoQueued)photoQueueDel(e.id);log.splice(i,1);localStorage.setItem('dj-foodlog-'+todayKey(),JSON.stringify(log));renderFoodLog();schedulePush()}
+function delFoodLogEntry(i){const log=loadFoodLog(),e=log[i];if(!e)return;if(e.photoQueued)photoQueueDel(e.id);log.splice(i,1);lsSet('dj-foodlog-'+todayKey(),JSON.stringify(log));renderFoodLog();schedulePush()}
 /* Meal edit — an inline form on the row (was four prompt()s whose typos became 0 kcal and still
    cleared `pending`). A number that doesn't parse keeps the old value and shows why. A PENDING meal
    stays pending unless all four macros parse (then it counts now and the auto-fill skips it); its
@@ -104,7 +104,7 @@ function saveFoodEdit(){
  const n=nEl.value.trim();if(n)e.n=n;
  if(Object.keys(vals).length===MEAL_FIELDS.length){Object.assign(e,vals);delete e.pending} // all four typed by hand → counted now; the autofill skips it
  _foodEdit=null;
- localStorage.setItem('dj-foodlog-'+todayKey(),JSON.stringify(log));
+ lsSet('dj-foodlog-'+todayKey(),JSON.stringify(log));
  renderFoodLog();schedulePush()}
 function foodEditForm(e){
  return `<form class="ef" onsubmit="event.preventDefault();saveFoodEdit()" style="flex:1">
@@ -123,7 +123,7 @@ function addCustomFood(){
  const p=parseFloat($("cfP").value)||0,c=parseFloat($("cfC").value)||0,f=parseFloat($("cfF").value)||0;
  if(!n||!kcal)return;
  const cf=loadCustomFoods();cf.push([n,kcal,p,c,f]);
- localStorage.setItem('dj-customfoods',JSON.stringify(cf));
+ lsSet('dj-customfoods',JSON.stringify(cf));
  $("cfName").value="";$("cfKcal").value="";$("cfP").value="";$("cfC").value="";$("cfF").value="";
  renderFoodPicker();schedulePush()}
 function renderFoodPicker(){
@@ -214,10 +214,10 @@ function serverHas(f){return HAS_SERVER&&!!SERVER[f]}
 let _photoTarget=null; // null = new meal from the Log-a-Meal form; an entry id = add a photo to that row
 function pickFoodPhoto(id){_photoTarget=id;const inp=$("foodPhotoInput");if(inp){inp.value="";inp.click()}}
 function foodLogFor(date){try{return JSON.parse(localStorage.getItem('dj-foodlog-'+date)||'[]')}catch(e){return[]}}
-function patchFoodEntry(date,id,fn){const log=foodLogFor(date),e=log.find(x=>x&&x.id===id);if(!e)return false;fn(e);localStorage.setItem('dj-foodlog-'+date,JSON.stringify(log));return true}
+function patchFoodEntry(date,id,fn){const log=foodLogFor(date),e=log.find(x=>x&&x.id===id);if(!e)return false;fn(e);lsSet('dj-foodlog-'+date,JSON.stringify(log));return true}
 function addPendingMeal(text){
  const date=todayKey(),log=foodLogFor(date),e={id:newFoodId(),at:new Date().toISOString(),n:text,pending:true,kcal:0,p:0,c:0,f:0};
- log.push(e);localStorage.setItem('dj-foodlog-'+date,JSON.stringify(log));
+ log.push(e);lsSet('dj-foodlog-'+date,JSON.stringify(log));
  return {date,id:e.id}}
 function takeMealText(){const ta=$("mealText"),t=(ta&&ta.value||'').trim();if(ta)ta.value='';return t}
 function logTextMeal(){
@@ -308,7 +308,7 @@ function loadDraftState(){try{return JSON.parse(localStorage.getItem('draft-stat
 function fetchDraftState(){
  if(!serverHas('drafts'))return Promise.resolve(null);
  return fetch('draft-state.json',{cache:'no-store'}).then(r=>r.ok?r.json():null)
-  .then(s=>{if(s&&s.lastRun)localStorage.setItem('draft-state',JSON.stringify(s));return s}).catch(()=>null)}
+  .then(s=>{if(s&&s.lastRun)lsSet('draft-state',JSON.stringify(s));return s}).catch(()=>null)}
 function sameDraftInputs(e){const d=e&&e.draft,of=d&&d.of;return !!(of&&(e.n||'')===(of.n||'')&&(e.photo||'')===(of.photo||''))}
 function draftSkipFor(st){const sk=st&&Array.isArray(st.skipped)?st.skipped:[];
  return e=>sk.find(x=>x&&x.id===e.id&&x.of&&(e.n||'')===(x.of.n||'')&&(e.photo||'')===(x.of.photo||''))||null}
@@ -328,7 +328,7 @@ function applyDrafts(st){
   const e=loc.log[loc.idx];
   if(e.draft&&String(e.draft.at||'')>=String(d.at||''))continue; // already have this (or a newer) one
   e.draft={kcal:d.kcal,p:d.p,c:d.c,f:d.f,of:{n:d.of.n||'',photo:d.of.photo||''},src:d.src||'',basis:String(d.basis||'').slice(0,120),at:d.at||'',model:d.model||''};
-  localStorage.setItem(loc.key,JSON.stringify(loc.log));
+  lsSet(loc.key,JSON.stringify(loc.log));
   touched=true;if(loc.date===todayKey())touchedToday=true}
  if(touched)schedulePush();
  return {touched,touchedToday}}
@@ -362,7 +362,7 @@ function loadAutofillState(){try{return JSON.parse(localStorage.getItem('af-stat
 function fetchAutofillState(){
  if(!serverHas('autofill'))return Promise.resolve(null);
  return fetch('autofill-state.json',{cache:'no-store'}).then(r=>r.ok?r.json():null)
-  .then(s=>{if(s&&s.lastRun)localStorage.setItem('af-state',JSON.stringify(s));return s}).catch(()=>null)}
+  .then(s=>{if(s&&s.lastRun)lsSet('af-state',JSON.stringify(s));return s}).catch(()=>null)}
 function autofillSkipReasons(){const s=loadAutofillState(),o={};if(s&&Array.isArray(s.skipped))s.skipped.forEach(x=>{if(x&&x.id)o[x.id]=String(x.reason||'')});return o}
 function afSummary(s){
  if(!s)return 'no run seen yet';

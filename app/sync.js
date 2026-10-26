@@ -9,7 +9,7 @@
 (function migrateImportedKey(){ // one-time: old key name would otherwise re-import everything as "new"
  const old=localStorage.getItem('dj-foodlog-imported');
  if(old!==null&&localStorage.getItem(IMPORTED_KEY)===null){
-  localStorage.setItem(IMPORTED_KEY,old);
+  lsSet(IMPORTED_KEY,old);
   localStorage.removeItem('dj-foodlog-imported')}})();
 let lastSharedSync=0;
 function syncSharedLog(){
@@ -44,7 +44,7 @@ function applySharedEntries(entries){
      sets:typeof e.sets=='number'?e.sets:1,
      reps:typeof e.reps=='number'?e.reps:null,
      ...(typeof e.note=='string'&&e.note?{note:e.note}:{}),...extra,src:'c'});
-    localStorage.setItem('dj-workout-log',JSON.stringify(wlog));
+    lsSet('dj-workout-log',JSON.stringify(wlog));
     touchedWorkout=true;continue}
    if(e.type=='workout-update'){ // correct an existing logged set in place, by entry id (weight/reps/unit/ld/note/plates)
     if(typeof e.target!='string'){imported.add(e.id);continue}
@@ -60,19 +60,19 @@ function applySharedEntries(entries){
     if(typeof e.ld=='string')tgt.ld=e.ld;
     if(typeof e.note=='string')tgt.note=e.note;
     if(e.plates&&typeof e.plates=='object'&&typeof e.plates.base=='number'&&Array.isArray(e.plates.side)&&e.plates.side.every(n=>typeof n=='number'))tgt.plates={base:e.plates.base,side:e.plates.side};
-    localStorage.setItem('dj-workout-log',JSON.stringify(wlog));
+    lsSet('dj-workout-log',JSON.stringify(wlog));
     touchedWorkout=true;continue}
    if(e.type=='cardio'){ // stairmaster/sauna minutes reported by Claude
     imported.add(e.id);
     if(typeof e.activity!='string'||typeof e.min!='number'||!isFinite(e.min))continue;
     const clog=loadCardioLog();
-    if(!clog.some(x=>x.id===e.id)){clog.push({id:e.id,date:e.date,activity:e.activity,min:e.min});localStorage.setItem('dj-cardio-log',JSON.stringify(clog));}
+    if(!clog.some(x=>x.id===e.id)){clog.push({id:e.id,date:e.date,activity:e.activity,min:e.min});lsSet('dj-cardio-log',JSON.stringify(clog));}
     touchedCardio=true;continue}
    if(e.type=='weigh'){ // Sunday fasted weigh-in reported by Claude (bodyweight log has no other Claude->phone path)
     imported.add(e.id);
     if(typeof e.w!='number'||!isFinite(e.w)||e.w<=0)continue;
     const blog=loadBW();
-    if(!blog.some(x=>x.d===e.date)){blog.push({d:e.date,w:e.w});blog.sort((a,b)=>b.d.localeCompare(a.d));localStorage.setItem('dj-bw-log',JSON.stringify(blog));} // one weigh-in per day — dedup by date so a manual entry isn't doubled
+    if(!blog.some(x=>x.d===e.date)){blog.push({d:e.date,w:e.w});blog.sort((a,b)=>b.d.localeCompare(a.d));lsSet('dj-bw-log',JSON.stringify(blog));} // one weigh-in per day — dedup by date so a manual entry isn't doubled
     touchedBW=true;continue}
    if(e.type=='food-move'){ // v118: re-date a meal logged under the wrong food day (e.g. "this is yday" logged this morning). e.date = destination, e.from = where it sits now; the entry moves whole (id, photo, macros, pending)
     if(typeof e.target!='string'||typeof e.from!='string'||!/^\d{4}-\d{2}-\d{2}$/.test(e.from)||e.from===e.date){console.error('food-move malformed, ignored: '+e.id);imported.add(e.id);continue}
@@ -83,8 +83,8 @@ function applySharedEntries(entries){
     if(fromLog[idx].photoQueued){console.warn('food-move waits for the photo upload: '+e.target);continue} // the queued photo is filed under the old date until /upload-food succeeds
     imported.add(e.id);
     toLog.push(fromLog.splice(idx,1)[0]);
-    localStorage.setItem('dj-foodlog-'+e.from,JSON.stringify(fromLog));
-    localStorage.setItem('dj-foodlog-'+e.date,JSON.stringify(toLog));
+    lsSet('dj-foodlog-'+e.from,JSON.stringify(fromLog));
+    lsSet('dj-foodlog-'+e.date,JSON.stringify(toLog));
     if(e.from==todayKey()||e.date==todayKey())touchedToday=true;
     continue}
    if(e.type=='food-update'){ // patch an existing meal in place (macros/photo), no duplicate row
@@ -98,7 +98,7 @@ function applySharedEntries(entries){
     ['kcal','p','c','f',...NUTRIENTS.map(n=>n.k)].forEach(k=>{if(typeof e[k]=='number'&&isFinite(e[k]))tgt[k]=e[k]});
     if(typeof e.photo=='string'&&/^food-photos\/[A-Za-z0-9._-]+$/.test(e.photo))tgt.photo=e.photo;
     if(['kcal','p','c','f'].every(k=>typeof e[k]=='number'&&isFinite(e[k])))delete tgt.pending; // v116: a full estimate counts the meal; a name/photo-only update leaves it pending
-    localStorage.setItem(fk,JSON.stringify(flog));
+    lsSet(fk,JSON.stringify(flog));
     if(e.date==todayKey())touchedToday=true;
     continue}
    if(typeof e.n!='string'||![e.kcal,e.p,e.c,e.f].every(n=>typeof n=='number'&&isFinite(n)))continue;
@@ -108,9 +108,9 @@ function applySharedEntries(entries){
    const fentry={id:e.id,n:e.n,kcal:e.kcal,p:e.p,c:e.c,f:e.f,...(typeof e.photo=='string'&&/^food-photos\/[A-Za-z0-9._-]+$/.test(e.photo)?{photo:e.photo}:{}),src:'c'};
    NUTRIENTS.map(n=>n.k).forEach(k=>{if(typeof e[k]=='number'&&isFinite(e[k]))fentry[k]=e[k]});
    log.push(fentry);
-   localStorage.setItem(key,JSON.stringify(log));
+   lsSet(key,JSON.stringify(log));
    if(e.date==todayKey())touchedToday=true}
-  localStorage.setItem(IMPORTED_KEY,JSON.stringify([...imported]));
+  lsSet(IMPORTED_KEY,JSON.stringify([...imported]));
   return {touchedToday,touchedWorkout,touchedCardio,touchedBW}}
 
 /* server-synced.json — Claude's back-channel for "I already sent these ids to the Sheet
@@ -123,10 +123,10 @@ function syncServerSyncedIds(){
   if(!data)return;
   if(Array.isArray(data.workoutIds)&&data.workoutIds.length){
    const s=loadSyncedIds();data.workoutIds.forEach(id=>s.add(id));
-   localStorage.setItem('dj-workout-log-synced',JSON.stringify([...s]))}
+   lsSet('dj-workout-log-synced',JSON.stringify([...s]))}
   if(Array.isArray(data.foodIds)&&data.foodIds.length){
    const s=loadFoodSyncedIds();data.foodIds.forEach(id=>s.add(id));
-   localStorage.setItem('dj-food-synced-ids',JSON.stringify([...s]))}
+   lsSet('dj-food-synced-ids',JSON.stringify([...s]))}
  }).catch(()=>{})}
 
 /* Device push — the reverse of the shared-log inbox: the phone snapshots every dj-* localStorage
@@ -151,9 +151,9 @@ function pushDeviceLogs(retried){ // resolves true/false (v116: Count now must k
   .then(r=>{
    if(r.status===409&&!retried)return r.json().then(d=>{
     if(!(d&&d.state==='stale-seq'&&Number.isInteger(d.seq)&&d.seq>=0))return false;
-    pushSeq=Math.max(d.seq,pushSeq);localStorage.setItem('dj-push-seq',String(pushSeq));
+    pushSeq=Math.max(d.seq,pushSeq);lsSet('dj-push-seq',String(pushSeq));
     return pushDeviceLogs(true)},()=>false);
-   if(!r.ok)return false;pushSeq++;localStorage.setItem('dj-push-seq',String(pushSeq));
-   localStorage.setItem('dj-push-last',new Date().toISOString());renderSyncStatus();return true}) // freshness monitor for the phone→PC half
+   if(!r.ok)return false;pushSeq++;lsSet('dj-push-seq',String(pushSeq));
+   lsSet('dj-push-last',new Date().toISOString());renderSyncStatus();return true}) // freshness monitor for the phone→PC half
   .catch(()=>false)}
 function schedulePush(){clearTimeout(pushTO);pushTO=setTimeout(()=>pushDeviceLogs(),4000)}

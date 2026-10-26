@@ -24,7 +24,7 @@ const DATA_CONTRACT=['PROFILE','SERVER','SEED','GOAL','START','SEASON','fmtMD','
 
 function ldOf(name){return LD_BY_NAME[name]}
 function loadBaseOverrides(){try{return JSON.parse(localStorage.getItem('dj-plate-base')||'{}')}catch(e){return{}}}
-function saveBaseOverride(name,lb){const m=loadBaseOverrides();if(lb==null||isNaN(lb))delete m[name];else m[name]=lb;localStorage.setItem('dj-plate-base',JSON.stringify(m));schedulePush()}
+function saveBaseOverride(name,lb){const m=loadBaseOverrides();if(lb==null||isNaN(lb))delete m[name];else m[name]=lb;lsSet('dj-plate-base',JSON.stringify(m));schedulePush()}
 function baseFor(name){const o=loadBaseOverrides();if(name in o)return o[name];const t=ldOf(name),c=t?LOAD_TYPES[t]:null;return c&&typeof c.base=='number'?c.base:0}
 
 
@@ -63,7 +63,7 @@ function nextSession(){
  return nid;
 }
 function setGymSession(id){
- try{if(id)localStorage.setItem(sessKey(),id);else localStorage.removeItem(sessKey())}catch(e){}
+ try{if(id)lsSet(sessKey(),id);else localStorage.removeItem(sessKey())}catch(e){}
  const S=dayObj(day).secs;
  sec=(SECTIONS.find(s=>(S[s.k]||[]).length)||SECTIONS[SECTIONS.length-1]).k;
  renderDay();schedulePush()}
@@ -127,8 +127,8 @@ function whyList(){return epochFor().why}
  if(!SEED)return;
  try{
   if(localStorage.getItem(LS_NS+'seeded'))return;
-  Object.keys(SEED).forEach(k=>{if(localStorage.getItem(k)===null)localStorage.setItem(k,typeof SEED[k]=='string'?SEED[k]:JSON.stringify(SEED[k]))});
-  localStorage.setItem(LS_NS+'seeded',new Date().toISOString());
+  Object.keys(SEED).forEach(k=>{if(localStorage.getItem(k)===null)lsSet(k,typeof SEED[k]=='string'?SEED[k]:JSON.stringify(SEED[k]))});
+  lsSet(LS_NS+'seeded',new Date().toISOString());
  }catch(e){console.error('seed: localStorage unavailable, demo starts empty: '+e)}})();
 /* Fallback diagram lookup by name — so warmup/stretch/cardio items and a few movement blocks
    that carry a video instead of a `d:` key still show a figure. Explicit `e.d` always wins. */
@@ -137,7 +137,7 @@ function diaKey(e){return (e&&e.d)||diaFor(e&&e.n);}
 let day="tue",phase=0,sec="warm";
 /* Reopen where you left off TODAY (survives the reload iOS forces on returning from a reel /
    backgrounding), else default to today's actual weekday instead of always Tuesday. */
-function saveView(){try{localStorage.setItem('dj-view',JSON.stringify({day,sec,dayKey:localDayKey()}))}catch(e){}}
+function saveView(){try{lsSet('dj-view',JSON.stringify({day,sec,dayKey:localDayKey()}))}catch(e){}}
 (function(){try{const v=JSON.parse(localStorage.getItem('dj-view')||'{}');
  if(v&&v.dayKey===localDayKey()&&DAYS.some(d=>d.k===v.day)){day=v.day;if(v.sec)sec=v.sec}
  else{const wd=["sun","mon","tue","wed","thu","fri","sat"][new Date().getDay()];if(DAYS.some(d=>d.k===wd))day=wd}}catch(e){}})();
@@ -148,7 +148,7 @@ const done={};
    always persisted separately (dj-workout-log); this only covers the visual ✓ circles. */
 function doneKey(){return 'dj-done-'+localDayKey()}
 function loadDone(){try{return JSON.parse(localStorage.getItem(doneKey())||'{}')}catch(e){return{}}}
-function saveDone(){try{localStorage.setItem(doneKey(),JSON.stringify(done))}catch(e){}}
+function saveDone(){try{lsSet(doneKey(),JSON.stringify(done))}catch(e){}}
 function pruneDone(){for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&k.indexOf('dj-done-')===0&&k!==doneKey())localStorage.removeItem(k)}}
 let doneDay=localDayKey();
 (function(){pruneDone();Object.assign(done,loadDone())})();

@@ -167,7 +167,7 @@ function addSet(id){
  if(weight!=null)entry.unit=(c&&c.unit)||'lb';
  if(plates)entry.plates=plates;
  const log=loadWorkoutLog();log.push(entry);
- localStorage.setItem('dj-workout-log',JSON.stringify(log));
+ lsSet('dj-workout-log',JSON.stringify(log));
  rEl.value=""; // reps clear; weight/plate stack stay — next set is usually the same or nearby
  renderSetList(id);schedulePush()}
 function todaySets(id){
@@ -199,7 +199,7 @@ function delSet(id,entryId){ // delete by entry id, not index — a stale index 
  const log=loadWorkoutLog();const i=log.findIndex(e=>e&&e.id===entryId);
  if(i<0)return;
  log.splice(i,1);
- localStorage.setItem('dj-workout-log',JSON.stringify(log));
+ lsSet('dj-workout-log',JSON.stringify(log));
  renderSetList(id);schedulePush()}
 function renderWorkoutStats(){
  const el=$("workoutStats");if(!el)return;
@@ -263,7 +263,7 @@ function logInputHtml(id,name){
 }
 const plateState={}; // id -> {side:[...]}; persisted per-day so a reload mid-exercise (e.g. after a reel) keeps the loaded plates
 function plateKey(){return 'dj-plates-'+localDayKey()}
-function savePlates(){try{localStorage.setItem(plateKey(),JSON.stringify(plateState))}catch(e){}}
+function savePlates(){try{lsSet(plateKey(),JSON.stringify(plateState))}catch(e){}}
 (function(){for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i);if(k&&k.indexOf('dj-plates-')===0&&k!==plateKey())localStorage.removeItem(k)}try{Object.assign(plateState,JSON.parse(localStorage.getItem(plateKey())||'{}'))}catch(e){}})();
 function plateSide(id){return (plateState[id]&&plateState[id].side)||[]}
 function plateTotal(id,name){const t=ldOf(name),c=LOAD_TYPES[t];const base=baseFor(name);const sum=plateSide(id).reduce((a,b)=>a+b,0);return rnd1(base+(c&&c.dbl?2*sum:sum))}
@@ -384,7 +384,7 @@ function clearWorkoutNotes(days){ // called from endDay with the day tab(s) ACTU
   }
  }
  if(archive.length>500)archive=archive.slice(-500); // bound the archive
- localStorage.setItem('dj-exlog-archive',JSON.stringify(archive));
+ lsSet('dj-exlog-archive',JSON.stringify(archive));
 }
 function exportWorkoutCSV(){
  const log=loadWorkoutLog();
@@ -420,7 +420,7 @@ function exportWorkoutCSV(){
 function loadSyncedIds(){try{return new Set(JSON.parse(localStorage.getItem('dj-workout-log-synced')||'[]'))}catch(e){return new Set()}}
 function loadFoodSyncedIds(){try{return new Set(JSON.parse(localStorage.getItem('dj-food-synced-ids')||'[]'))}catch(e){return new Set()}}
 function loadSheetUrl(){return localStorage.getItem('dj-sheet-url')||''}
-function saveSheetUrl(){const el=$("sheetUrlIn");localStorage.setItem('dj-sheet-url',el.value.trim());el.defaultValue=el.value;schedulePush()}
+function saveSheetUrl(){const el=$("sheetUrlIn");lsSet('dj-sheet-url',el.value.trim());el.defaultValue=el.value;schedulePush()}
 function renderSheetUrl(){const el=$("sheetUrlIn");if(el)el.value=el.defaultValue=loadSheetUrl()} // defaultValue = the saved value, so hasUnsavedText() doesn't count it as typing
 /* Sends workout AND food rows in one POST — apps-script.gs (v2) files them into separate
    "Workouts"/"Food" tabs on the same sheet. Entries logged before ids existed (id undefined)
@@ -437,8 +437,8 @@ function syncToSheet(){
    .then(()=>{
     wPending.forEach(e=>wSynced.add(e.id));
     fPending.forEach(e=>fSynced.add(e.id));
-    localStorage.setItem('dj-workout-log-synced',JSON.stringify([...wSynced]));
-    localStorage.setItem('dj-food-synced-ids',JSON.stringify([...fSynced]));
+    lsSet('dj-workout-log-synced',JSON.stringify([...wSynced]));
+    lsSet('dj-food-synced-ids',JSON.stringify([...fSynced]));
     resolve({ok:true,sentWorkout:wPending.length,sentFood:fPending.length})})
    .catch(()=>resolve({ok:false,reason:'network'}))})}
 
@@ -541,7 +541,7 @@ function endMeals(){
  if(!t.n){btn.textContent="No meals logged today yet";setTimeout(()=>{btn.textContent=orig},2500);return}
  if(t.pend&&!confirm(t.pend+" meal"+(t.pend==1?" is":"s are")+" still pending (not counted yet). Save & review anyway?"))return;
  exportFoodCSV();
- localStorage.setItem('dj-day-confirmed-'+todayKey(),'1');
+ lsSet('dj-day-confirmed-'+todayKey(),'1');
  renderDayReview();
  btn.textContent="✓ Meals saved & reviewed";
  setTimeout(()=>{btn.textContent=orig},3000);
@@ -568,6 +568,6 @@ function saveExLog(id){
  const t=inp.value.trim();if(!t)return;
  const entries=loadExLog(id);
  entries.unshift({d:localDayKey(),t}); // local date — matches the app-wide day contract (rolls at local midnight; since v73 the food log does too)
- localStorage.setItem(exLogKey(id),JSON.stringify(entries));
+ lsSet(exLogKey(id),JSON.stringify(entries));
  inp.value="";renderExLog(id);schedulePush()}
-function delExLog(id,i){const entries=loadExLog(id);entries.splice(i,1);localStorage.setItem(exLogKey(id),JSON.stringify(entries));renderExLog(id);schedulePush()}
+function delExLog(id,i){const entries=loadExLog(id);entries.splice(i,1);lsSet(exLogKey(id),JSON.stringify(entries));renderExLog(id);schedulePush()}

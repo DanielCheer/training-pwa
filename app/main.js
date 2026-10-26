@@ -132,7 +132,7 @@ function timer(){const b=$("tmr");
  if(tInt||tEnd){clearInterval(tInt);tInt=null;tEnd=0;clearTimeout(notifyTO);
   localStorage.removeItem('dj-timer-end');b.classList.remove("run");b.textContent="⏱ "+TDUR+"s";return}
  reqNotifPerm();unlockAudio();
- tEnd=Date.now()+TDUR*1000;localStorage.setItem('dj-timer-end',tEnd);
+ tEnd=Date.now()+TDUR*1000;lsSet('dj-timer-end',tEnd);
  b.classList.add("run");scheduleNotify();tickTimer();
  tInt=setInterval(tickTimer,250)}
 document.addEventListener('visibilitychange',()=>{
