@@ -207,7 +207,13 @@ def public_rel(raw_path):
     return None
 
 class Handler(SimpleHTTPRequestHandler):
-    protocol_version = "HTTP/1.0"
+    # HTTP/1.1: the phone reuses one TLS-proxied connection for the shell's ~18 files instead of one per
+    # file. The contract that makes keep-alive safe: every response states its length (Content-Length,
+    # also on 206/416 and every JSON answer), and every request body is either read in full or the
+    # connection is closed (send_error and _json(close=True) do that) - an unread body would otherwise
+    # be parsed as the next request. Idle connections are dropped after `timeout` seconds.
+    protocol_version = "HTTP/1.1"
+    timeout = 120
 
     def _blocked(self):
         return public_rel(self.path) is None
@@ -298,6 +304,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if start > end or start >= size:
                     self.send_response(416)
                     self.send_header('Content-Range', f'bytes */{size}')
+                    self.send_header('Content-Length', '0')
                     self.end_headers(); return
                 status = 206
         length = end - start + 1
@@ -318,6 +325,7 @@ class Handler(SimpleHTTPRequestHandler):
                 try:
                     self.wfile.write(chunk)
                 except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+                    self.close_connection = True
                     return  # player closed the connection mid-stream - normal for video scrubbing
                 remaining -= len(chunk)
 
@@ -397,6 +405,22 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(resp)
 
+    def _drain_body(self, limit):
+        """Read and drop a request body we don't use, so a kept-alive connection stays in sync. False (and the
+        error is sent) when it's too big or the length is missing/bad."""
+        try:
+            n = int(self.headers.get('Content-Length', '0') or '0')
+        except ValueError:
+            self.send_error(411); return False
+        if n < 0 or n > limit:
+            self.send_error(413); return False
+        while n > 0:
+            chunk = self.rfile.read(min(65536, n))
+            if not chunk:
+                self.close_connection = True; return False
+            n -= len(chunk)
+        return True
+
     def _post_refusal(self, route):
         """Why this POST is refused (a short reason), or None. See POST_RULES / ALLOWED_ORIGINS."""
         accepted, need_header = POST_RULES[route]
@@ -473,7 +497,9 @@ class Handler(SimpleHTTPRequestHandler):
         if route == '/upload-food':
             self._upload_food(); return
         if route == '/request-fill':
-            self._request_fill(); return
+            if self._drain_body(MAX_BODY):   # no payload is used, but it must leave the connection
+                self._request_fill()
+            return
         try:
             n = int(self.headers.get('Content-Length', ''))
         except ValueError:
