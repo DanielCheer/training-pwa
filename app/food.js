@@ -10,15 +10,30 @@ function saveBW(){
  localStorage.setItem('dj-bw-log',JSON.stringify(entries));
  inp.value="";renderBW();schedulePush()}
 function delBW(i){const entries=loadBW();entries.splice(i,1);localStorage.setItem('dj-bw-log',JSON.stringify(entries));renderBW();schedulePush()}
-function editBW(i){
- const entries=loadBW(),cur=entries[i];if(!cur)return;
- const nd=prompt("Edit date (YYYY-MM-DD):",cur.d);
- if(!nd||nd===cur.d)return;
- if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)){alert("Use YYYY-MM-DD format.");return}
- cur.d=nd;
+/* Weigh-in edit — an inline form on the row (date + weight), replacing the old date-only prompt().
+   Invalid input keeps the old entry and says why; one weigh-in per date stays the rule. */
+let _bwEditD=null; // date key of the weigh-in row being edited
+const BW_MAX=1000;
+function editBW(i){const cur=loadBW()[i];if(!cur)return;_bwEditD=cur.d;renderBW();const el=$("bwe-w");if(el&&el.focus)el.focus()}
+function cancelBWEdit(){_bwEditD=null;renderBW()}
+function saveBWEdit(){
+ const entries=loadBW(),cur=entries.find(e=>e.d===_bwEditD),dEl=$("bwe-d"),wEl=$("bwe-w"),er=$("bwe-err");
+ if(!cur||!dEl||!wEl)return cancelBWEdit();
+ const nd=dEl.value.trim(),w=parseNumIn(wEl.value,0.1,BW_MAX),bad=[];
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)||fmtDayKey(new Date(nd+'T12:00:00'))!==nd)bad.push('pick a real date');
+ else if(nd!==cur.d&&entries.some(e=>e.d===nd))bad.push('there is already a weigh-in on '+nd);
+ if(w==null)bad.push('"'+wEl.value.trim()+'" isn\'t a weight in lb');
+ if(bad.length){if(er)er.textContent=bad.join(' · ')+' — nothing changed.';return}
+ cur.d=nd;cur.w=w;_bwEditD=null;
  entries.sort((a,b)=>b.d.localeCompare(a.d));
  localStorage.setItem('dj-bw-log',JSON.stringify(entries));
  renderBW();schedulePush()}
+function bwEditForm(e){
+ return `<form class="ef" onsubmit="event.preventDefault();saveBWEdit()" style="flex:1">
+  <div class="efrow"><div><label class="efl" for="bwe-d">Date</label><input id="bwe-d" type="date" value="${escAttr(e.d)}"></div>
+  <div><label class="efl" for="bwe-w">Weight (lb)</label><input id="bwe-w" type="text" inputmode="decimal" value="${escAttr(e.w)}" autocomplete="off"></div></div>
+  <div class="eferr" id="bwe-err" role="alert"></div>
+  <div class="efbtns"><button type="submit" class="efok">Save</button><button type="button" class="efno" onclick="cancelBWEdit()">Cancel</button></div></form>`}
 function renderBW(){
  renderGoalCard(); // the Goal card's bodyweight bar follows the latest weigh-in
  const el=$("bwList");if(!el)return;
@@ -27,6 +42,7 @@ function renderBW(){
   const prev=entries[i+1],delta=prev?+(e.w-prev.w).toFixed(1):null;
   const dtxt=delta==null?"":(delta>=0?`+${delta}`:delta);
   const dcol=delta==null?"var(--mu)":delta<0?"#7BB8D4":delta>0.75?"var(--or)":"var(--gr)";
+  if(e.d===_bwEditD)return `<div class="logentry">${bwEditForm(e)}</div>`;
   return `<div class="logentry"><div style="flex:1"><div class="logdate" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px" onclick="editBW(${i})">${e.d}</div><div class="logtxt"><b style="font-size:16px">${e.w}</b> lb${delta!=null?` <span style="color:${dcol};font-weight:700;font-size:12.5px">${dtxt} lb</span>`:""}</div></div><button class="del" onclick="delBW(${i})">×</button></div>`
  }).join(""):`<div class="small" style="margin-top:2px">No weigh-ins yet — log Sunday morning's number here.</div>`}
 
@@ -66,19 +82,42 @@ function addFood(idx){
  renderFoodLog();schedulePush()}
 function newFoodId(){return 'f-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)}
 function delFoodLogEntry(i){const log=loadFoodLog(),e=log[i];if(!e)return;if(e.photoQueued)photoQueueDel(e.id);log.splice(i,1);localStorage.setItem('dj-foodlog-'+todayKey(),JSON.stringify(log));renderFoodLog();schedulePush()}
-function editFoodLogEntry(i){
- const log=loadFoodLog(),e=log[i];if(!e)return;
- const n=prompt("Name:",e.n);if(n==null)return;
- if(e.pending&&!confirm("This meal is waiting for the auto-fill estimate.\n\nOK = type the macros yourself\nCancel = just keep the new name (auto-fill will use it)")){
-  e.n=n;localStorage.setItem('dj-foodlog-'+todayKey(),JSON.stringify(log));renderFoodLog();schedulePush();return}
- const kcal=prompt("Calories:",e.kcal);if(kcal==null)return;
- const p=prompt("Protein (g):",e.p);if(p==null)return;
- const c=prompt("Carbs (g):",e.c);if(c==null)return;
- const f=prompt("Fat (g):",e.f);if(f==null)return;
- e.n=n;e.kcal=parseFloat(kcal)||0;e.p=parseFloat(p)||0;e.c=parseFloat(c)||0;e.f=parseFloat(f)||0;
- delete e.pending; // macros typed by hand → counted now; the autofill skips it (no longer pending)
+/* Meal edit — an inline form on the row (was four prompt()s whose typos became 0 kcal and still
+   cleared `pending`). A number that doesn't parse keeps the old value and shows why. A PENDING meal
+   stays pending unless all four macros parse (then it counts now and the auto-fill skips it); its
+   number boxes start empty, so a rename alone keeps it waiting for the estimate. A counted meal
+   needs all four. MEAL_MAX mirrors food_common.valid_num's ceiling. */
+let _foodEdit=null; // id of the meal whose edit form is open
+const MEAL_FIELDS=[['kcal','Calories'],['p','Protein g'],['c','Carbs g'],['f','Fat g']],MEAL_MAX=20000;
+function editFoodLogEntry(i){const e=loadFoodLog()[i];if(!e)return;_foodEdit=e.id;renderFoodLog();const el=$("fe-n");if(el&&el.focus)el.focus()}
+function cancelFoodEdit(){_foodEdit=null;renderFoodLog()}
+function saveFoodEdit(){
+ const log=loadFoodLog(),e=log.find(x=>x&&x.id===_foodEdit),er=$("fe-err"),nEl=$("fe-n");
+ if(!e||!nEl)return cancelFoodEdit();
+ const raw={},vals={},bad=[];
+ for(const [k,lbl] of MEAL_FIELDS){const el=$("fe-"+k);raw[k]=el?el.value.trim():'';
+  if(raw[k]===''){if(!e.pending)bad.push(lbl+' is empty');continue}
+  const v=parseNumIn(raw[k],0,MEAL_MAX);if(v==null)bad.push(lbl+' "'+raw[k]+'" isn\'t a number');else vals[k]=v}
+ const typed=MEAL_FIELDS.filter(([k])=>raw[k]!=='').length;
+ if(e.pending&&typed&&typed<MEAL_FIELDS.length&&!bad.length)bad.push('fill all four numbers to count it now, or leave them empty to keep it pending');
+ if(bad.length){if(er)er.textContent=bad.join(' · ')+' — nothing changed.';return}
+ const n=nEl.value.trim();if(n)e.n=n;
+ if(Object.keys(vals).length===MEAL_FIELDS.length){Object.assign(e,vals);delete e.pending} // all four typed by hand → counted now; the autofill skips it
+ _foodEdit=null;
  localStorage.setItem('dj-foodlog-'+todayKey(),JSON.stringify(log));
  renderFoodLog();schedulePush()}
+function foodEditForm(e){
+ return `<form class="ef" onsubmit="event.preventDefault();saveFoodEdit()" style="flex:1">
+  <label class="efl" for="fe-n">Meal</label><input id="fe-n" type="text" value="${escAttr(e.n||'')}" autocomplete="off">
+  <div class="efrow">${MEAL_FIELDS.map(([k,lbl])=>`<div><label class="efl" for="fe-${k}">${lbl}</label><input id="fe-${k}" type="text" inputmode="decimal" value="${e.pending?'':escAttr(e[k])}" autocomplete="off"></div>`).join('')}</div>
+  ${e.pending?'<div class="small" style="margin-top:4px">Leave the numbers empty to keep it pending for the auto-fill, or fill all four to count it now.</div>':''}
+  <div class="eferr" id="fe-err" role="alert"></div>
+  <div class="efbtns"><button type="submit" class="efok">Save</button><button type="button" class="efno" onclick="cancelFoodEdit()">Cancel</button></div></form>`}
+/* An open edit form survives the re-renders a sync or a draft poll triggers: what was typed (and the
+   error shown) is carried over by element id. */
+const FOOD_FORM_IDS=['fe-n',...MEAL_FIELDS.map(([k])=>'fe-'+k)];
+function keepFormState(ids){const s={};ids.forEach(id=>{const el=$(id);if(el)s[id]={v:el.value,d:el.defaultValue}});return s}
+function restoreFormState(s){Object.keys(s).forEach(id=>{const el=$(id);if(el){el.defaultValue=s[id].d;el.value=s[id].v}})}
 function addCustomFood(){
  const n=$("cfName").value.trim(),kcal=parseFloat($("cfKcal").value);
  const p=parseFloat($("cfP").value)||0,c=parseFloat($("cfC").value)||0,f=parseFloat($("cfF").value)||0;
@@ -117,6 +156,8 @@ function renderFoodLog(){
  const title=$("loggedTitle");
  if(title)title.textContent=todayKey()===localDayKey()?"Logged Today":"Logged Today · still "+fmtHistDate(todayKey())+" until "+fmtHour(FOOD_DAY_ROLL_HOUR);
  const skipped=autofillSkipReasons(),dskip=draftSkipFor(loadDraftState());
+ if(_foodEdit&&!log.some(e=>e&&e.id===_foodEdit))_foodEdit=null; // the meal moved or was deleted under the form
+ const kept=_foodEdit?keepFormState(FOOD_FORM_IDS):{},keptErr=_foodEdit&&$("fe-err")?$("fe-err").textContent:'';
  listEl.innerHTML=log.length?log.map((e,i)=>{
   const tstyle='width:42px;height:42px;border-radius:8px;object-fit:cover;margin-right:9px;flex:none;cursor:pointer';
   const thumb=e.photo
@@ -132,8 +173,10 @@ function renderFoodLog(){
   const sub=e.pending
    ?`<div class="small" style="color:var(--ye)">⏳ pending${draftTxt} — counted by the nightly auto-fill or “Count now”${e.photoQueued?' · photo waiting to upload':''}${skipped[e.id]?`<br><span style="color:var(--or)">last run skipped it: ${escHtml(skipped[e.id])}</span>`:''}</div>`
    :`<div class="small">${e.kcal} kcal · ${e.p}g P · ${e.c}g C · ${e.f}g F${e.draft&&isFinite(e.draft.kcal)?` <span style="color:var(--dim)">· draft was ≈${Math.round(e.draft.kcal)}</span>`:''}</div>`;
+  if(e.id===_foodEdit)return `<div class="logentry" style="align-items:flex-start">${thumb}${foodEditForm(e)}<button class="del" onclick="delFoodLogEntry(${i})">×</button></div>`;
   return `<div class="logentry" style="align-items:center">${thumb}<div style="flex:1;cursor:pointer" onclick="editFoodLogEntry(${i})"><div class="logtxt" style="font-weight:700;text-decoration:underline dotted;text-underline-offset:3px">${escHtml(e.n||'Photo meal')}${e.src=='c'?' <span class="flag" style="background:#07201D;color:var(--cy)">C</span>':''}</div>${sub}</div><button class="del" onclick="delFoodLogEntry(${i})">×</button></div>`;
  }).join(""):`<div class="small">Nothing logged yet today.</div>`;
+ if(_foodEdit){restoreFormState(kept);const er=$("fe-err");if(er&&keptErr)er.textContent=keptErr}
  hydrateQueuedThumbs(listEl);
  renderSyncStatus()}
 

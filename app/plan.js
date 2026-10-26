@@ -277,7 +277,7 @@ function platePanelInner(id,name){
   : (c.dbl?'tap the plates on <b style="color:var(--tx)">ONE side</b> — ×2 loads the other for you':`${base} + plates`);
  return `<div style="background:#0A1520;border:1px solid var(--bd);border-radius:10px;padding:9px 10px;margin-bottom:7px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px">
-   <span onclick="editBase('${id}')" style="font-size:11px;color:var(--mu);cursor:pointer;white-space:nowrap">${c.lbl}: <b style="color:var(--tx)">${base}</b> lb ✎</span>
+   ${_baseEdit[id]?baseEditForm(id,name,c,base):`<span onclick="editBase('${id}')" style="font-size:11px;color:var(--mu);cursor:pointer;white-space:nowrap">${c.lbl}: <b style="color:var(--tx)">${base}</b> lb ✎</span>`}
    <span style="font-size:10px;color:var(--dim);white-space:nowrap">${c.dbl?'load 1 side · ×2':'single load'}</span>
    <span style="font-size:14px;font-weight:800;color:var(--gr);white-space:nowrap">${rnd1(total)} lb</span>
   </div>
@@ -292,7 +292,23 @@ function tapPlate(id,w){(plateState[id]=plateState[id]||{side:[]}).side.push(w);
 function undoPlate(id){const s=plateState[id];if(s&&s.side.length)s.side.pop();savePlates();renderPanel(id)}
 function clearPlates(id){if(plateState[id])plateState[id].side=[];savePlates();renderPanel(id)}
 function renderPanel(id){const el=$("pl-"+id);if(el)el.innerHTML=platePanelInner(id,exName(id))}
-function editBase(id){const name=exName(id);if(!name)return;const cur=baseFor(name);const v=prompt("Base / bar weight (lb) for "+name+":",cur);if(v==null)return;const n=parseFloat(v);saveBaseOverride(name,isNaN(n)?null:n);renderPanel(id)}
+/* Bar/sled base weight — edited in place in the plate panel (was a prompt(); an empty or mistyped
+   answer silently reset the base). Invalid input keeps the old base and says why; "Default" is explicit. */
+const _baseEdit={}; // plate-panel id -> true while its base editor is open
+const BASE_MAX=1000;
+function baseEditForm(id,name,c,base){
+ return `<form class="ef ef-inline" onsubmit="event.preventDefault();saveBase('${id}')" style="flex:1">
+  <label class="efl" for="be-${id}">${c.lbl} base (lb) for ${escHtml(name)}</label>
+  <div style="display:flex;gap:5px;align-items:center"><input id="be-${id}" type="text" inputmode="decimal" value="${base}" autocomplete="off">
+  <button type="submit" class="efok">Save</button><button type="button" class="efno" onclick="resetBase('${id}')">Default</button><button type="button" class="efno" onclick="closeBase('${id}')">Cancel</button></div>
+  <div class="eferr" id="be-err-${id}" role="alert"></div></form>`}
+function editBase(id){if(!exName(id))return;_baseEdit[id]=true;renderPanel(id);const el=$("be-"+id);if(el&&el.focus)el.focus()}
+function closeBase(id){delete _baseEdit[id];renderPanel(id)}
+function saveBase(id){const name=exName(id),el=$("be-"+id);if(!name||!el)return closeBase(id);
+ const v=parseNumIn(el.value,0,BASE_MAX);
+ if(v==null){const er=$("be-err-"+id);if(er)er.textContent='"'+el.value.trim()+'" isn\'t a weight from 0 to '+BASE_MAX+' lb — the base stays '+baseFor(name)+' lb.';return}
+ saveBaseOverride(name,v);closeBase(id)}
+function resetBase(id){const name=exName(id);if(name)saveBaseOverride(name,null);closeBase(id)}
 function typeMode(id){const el=$("loginp-"+id);if(el)el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:4px"><input id="setw-${id}" type="number" inputmode="decimal" step="0.5" placeholder="total weight (lb)" style="${INP_STY}">${repsAndSet(id)}</div><div style="margin-bottom:7px"><span onclick="plateMode('${id}')" style="font-size:11.5px;color:var(--cy);cursor:pointer">⊞ back to plates</span></div>`}
 function plateMode(id){const el=$("loginp-"+id);if(el)el.innerHTML=plateBlock(id,exName(id))}
 function fmtSetWeight(e){
@@ -533,6 +549,12 @@ function endMeals(){
 
 /* Per-exercise log — persisted per day+section+slot (weight/reps you actually did), localStorage only, this phone. */
 function escHtml(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function escAttr(s){return escHtml(String(s)).replace(/"/g,'&quot;')}
+/* Inline edit forms (meal, weigh-in, bar base) parse numbers with this — never parseFloat(x)||0, which
+   turned a typo into a 0 that then counted. Returns the number, or null for empty / not a plain decimal /
+   outside [min, max); the caller keeps the old value and shows the error. */
+function parseNumIn(raw,min,max){const s=String(raw==null?'':raw).trim();
+ if(!/^-?(\d+(\.\d*)?|\.\d+)$/.test(s))return null;const v=Number(s);return isFinite(v)&&v>=min&&v<max?v:null}
 function exLogKey(id){return 'dj-exlog-'+id}
 function loadExLog(id){try{return JSON.parse(localStorage.getItem(exLogKey(id))||'[]')}catch(e){return[]}}
 function exLogListHtml(id){
