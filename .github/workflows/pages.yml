@@ -1,0 +1,66 @@
+name: Pages demo
+
+# Publishes the static demo (the public checkout's demo persona, SERVER = null) to GitHub Pages.
+# Only the app shell is published: index.html, styles.css, sw.js, manifest.json, app/, data/, icons/.
+# Server scripts, tests, docs and anything else in the repository never reach the site.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble the shell allowlist
+        run: |
+          set -euo pipefail
+          mkdir _site
+          cp index.html styles.css sw.js manifest.json _site/
+          cp -r app data icons _site/
+          find _site -type f | sort
+
+      - name: Check the artifact is exactly the service worker's shell
+        # Every file in sw.js SHELL must be published (or the demo can't work offline), and nothing
+        # else may be (sw.js itself aside): a file that slips in here is a file made public.
+        run: |
+          python3 - <<'PY'
+          import os, re, sys
+          src = open('sw.js', encoding='utf-8').read()
+          shell = re.search(r"const SHELL = \[(.*?)\];", src, re.S).group(1)
+          want = {p[2:] if p.startswith('./') else p for p in re.findall(r"'([^']*)'", shell)} - {''}
+          want.add('sw.js')
+          have = {os.path.relpath(os.path.join(d, f), '_site').replace(os.sep, '/')
+                  for d, _, fs in os.walk('_site') for f in fs}
+          missing, extra = sorted(want - have), sorted(have - want)
+          print('published', len(have), 'files')
+          if missing or extra:
+              sys.exit('artifact != SHELL: missing %s, extra %s' % (missing, extra))
+          PY
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
