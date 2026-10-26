@@ -442,12 +442,8 @@ class Handler(SimpleHTTPRequestHandler):
         400 stale snapshot. The app then polls autofill-state.json for the result."""
         global _fill_last
         with LOCK:
-            try:
-                with open(FILL_LOCK, 'r', encoding='utf-8') as f:
-                    if time.time() < float(json.load(f).get('staleAfter', 0)):
-                        self._json(409, {'ok': False, 'state': 'running'}); return
-            except (OSError, ValueError, TypeError, AttributeError):
-                pass  # no lock (or unreadable) - autofill's own lock is the real guard
+            if food_common.lock_live(FILL_LOCK):   # the same RunLock rule the agents use; autofill's own lock is the real guard
+                self._json(409, {'ok': False, 'state': 'running'}); return
             wait = FILL_MIN_GAP - (time.time() - _fill_last)
             if wait > 0:
                 self._json(429, {'ok': False, 'state': 'rate-limited', 'retryIn': round(wait)}); return
