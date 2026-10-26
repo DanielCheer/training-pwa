@@ -13,14 +13,23 @@ function renderProfileCards(){
   P.scan.rows.map(([l,v,f])=>`<div class="mini"><div class="l">${l}</div><div class="v">${v}${f?` <span class="flag" style="${FLAG_STY[f[1]]}">${f[0]}</span>`:''}</div></div>`).join('')+
   `</div><div class="small" style="margin-top:9px">${P.scan.note}</div>`);
  set("mealTiming",P.mealTiming);set("aptTitle",P.aptTitle);
- const S=P.sampleDay;
- set("sampleDayCard",`<div class="stitle" style="color:var(--or)">${S.title}</div><div class="small" style="margin-bottom:10px">${S.intro}</div><div style="display:flex;flex-direction:column;gap:7px">`+
+ const S=P.sampleDay,tot=sampleDayTotals(S.items);
+ set("sampleDayCard",`<div class="stitle" style="color:var(--or)">${S.title}</div><div class="small" style="margin-bottom:10px">${withTargets(S.intro)}</div><div style="display:flex;flex-direction:column;gap:7px">`+
   S.items.map(i=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;background:var(--card2);border-radius:9px"><div><b style="font-size:13px">${i.n}</b><div class="small" style="margin-top:1px">${i.d}</div></div><div style="text-align:right;font-size:11.5px;color:var(--mu);white-space:nowrap">${i.kcal} kcal<br>${i.p}g P</div></div>`).join('')+
-  `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#1A0F05;border:1px solid #6B2A12;border-radius:9px"><b style="font-size:13px;color:var(--or)">Total</b><div style="text-align:right;font-size:12.5px;font-weight:800;color:var(--or)">${S.total}</div></div></div><div class="small" style="margin-top:9px">${S.note}</div>`);
+  `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#1A0F05;border:1px solid #6B2A12;border-radius:9px"><b style="font-size:13px;color:var(--or)">Total</b><div style="text-align:right;font-size:12.5px;font-weight:800;color:var(--or)">~${Math.round(tot.kcal)} kcal · ${Math.round(tot.p)}g P · ${Math.round(tot.c)}g C · ${Math.round(tot.f)}g F</div></div></div>`+
+  `<div class="small sdv" style="margin-top:9px">vs your targets: ${SAMPLE_MACROS.map(([k,lbl,u])=>{const t=rngTag(tot[k],DAY_TARGETS[k],u);return `${lbl} <b style="color:${t.cls=='in'?'var(--gr)':t.cls=='over'?'var(--or)':'var(--ye)'}">${t.s}</b>`}).join(' · ')}</div>`+
+  `<div class="small" style="margin-top:9px">${withTargets(S.note)}</div>`);
  const K=P.shakes;
  set("shakesCard",`<div class="stitle" style="color:var(--gr)">${K.title}</div>`+K.paras.map(t=>`<div class="small" style="margin-bottom:8px">${t}</div>`).join('')+(K.warn?`<div class="why" style="border-color:var(--rd)">${K.warn}</div>`:''));
  const mt=$("mealText");if(mt)mt.placeholder=P.mealPlaceholder;
  const tz=$("tzLabel");if(tz)tz.textContent=P.tz}
+/* Fuel sample day — the Total row and the "vs your targets" line are computed from the item rows, and
+   the prose names the bands through {kcal}/{p}/{c}/{f} tokens filled from DAY_TARGETS, so a changed
+   target can't leave the card claiming a band the numbers no longer hit (it said "3,000–3,100" while
+   DAY_TARGETS read 3000–3200). */
+const SAMPLE_MACROS=[['kcal','calories',' kcal'],['p','protein','g'],['c','carbs','g'],['f','fat','g']];
+function sampleDayTotals(items){return items.reduce((a,i)=>({kcal:a.kcal+i.kcal,p:a.p+i.p,c:a.c+i.c,f:a.f+i.f}),{kcal:0,p:0,c:0,f:0})}
+function withTargets(s){return String(s||'').replace(/\{(kcal|p|c|f)\}/g,(m,k)=>DAY_TARGETS[k].map(v=>v.toLocaleString('en-US')).join('–'))}
 /* Goal card — three progress bars toward GOAL, derived (never typed in): bodyweight from the LATEST
    weigh-in in dj-bw-log (falls back to the scan until there is one), lean mass and body fat from the
    last scan (PROFILE.scan), each labelled with where its number came from. Progress = the nearer of

@@ -85,6 +85,7 @@ function dayObj(k,dk){dk=dk||localDayKey();
    activates — both should shout, not slip. */
 (function sanityCheck(){
  ['bw','bfPct','lean'].forEach(k=>{if(!(typeof (PROFILE.scan||{})[k]=='number'&&isFinite(PROFILE.scan[k])))cfgFail('PROFILE.scan.'+k+' must be a number — the Goal card bars read it.')});
+ (PROFILE.sampleDay.items||[]).forEach(i=>{if(!['kcal','p','c','f'].every(k=>typeof i[k]=='number'&&isFinite(i[k])))cfgFail('PROFILE.sampleDay item "'+i.n+'" needs numeric kcal, p, c and f — the Fuel tab totals are computed from them.')});
  if(!(GOAL.bw>0&&GOAL.bfPct>0&&GOAL.bfPct<100))cfgFail('GOAL needs bw > 0 and 0 < bfPct < 100 — the Goal card bars read it.');
  if(PHW.length!==PHASES.length)cfgFail('PHW has '+PHW.length+' entries but PHASES has '+PHASES.length+' — every phase needs a week count.');
  const chk=(list,where)=>(list||[]).forEach(e=>{if(e&&Array.isArray(e.rx)&&e.rx.length!==1&&e.rx.length!==PHASES.length)cfgFail('"'+e.n+'" ('+where+'): '+e.rx.length+' rx entries — needs 1 or '+PHASES.length+'.')});

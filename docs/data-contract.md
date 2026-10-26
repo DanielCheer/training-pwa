@@ -51,13 +51,17 @@ same rule (`node harness/harness.js`, or `--private DIR`, or `--demo` to ignore 
 `name`, `title` (page title + Home heading), `shortName` (home-screen label), `eyebrow`, `tz` (named in the
 Meal History roll-over line), `mealPlaceholder`, `goal:{title, bfNote?, note}`,
 `scan:{date, bw, bfPct, lean, rows:[[label, value, [flagText, 'lo'|'ok'|'hi']?]], note}`, `aptTitle`, `mealTiming`,
-`sampleDay:{title, intro, items:[{n,d,kcal,p}], total, note}`, `shakes:{title, paras:[…], warn}`,
+`sampleDay:{title, intro, items:[{n,d,kcal,p,c,f}], note}`, `shakes:{title, paras:[…], warn}`,
 `cardioRules`.
 
 The Goal card's bars are derived, never typed in: bodyweight from the latest `dj-bw-log` weigh-in (the scan's
 `bw` until there is one), lean mass and body fat from the scan's numbers, all measured against `GOAL`
 (`goal.bfNote` is appended to the body-fat goal). The demo keeps the scan numbers in one `SCAN` constant
 that both `scan` and its first rows read, so the card and the bars can't disagree.
+
+The Fuel tab's sample day computes its Total row and a "vs your targets" line from the item rows; its `intro`
+and `note` may name a band with `{kcal}`, `{p}`, `{c}` or `{f}`, filled from `DAY_TARGETS` (never type the
+numbers into the prose: they go stale the day the targets move).
 
 `SERVER=null` is a static checkout (the public demo): no phone→PC push, no shared-log inbox, no
 auto-fill, no drafts, no photo upload; the Log tab's status strip says so. Network paths additionally need
