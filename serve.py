@@ -168,6 +168,11 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if p.startswith('/videos/'):
             self._serve_video(p); return
+        if public_rel(self.path) in OVERLAYABLE:
+            # The file behind an overlayable path depends on whether the overlay is on, so the
+            # stdlib's mtime-based 304 can confirm a cached copy of the OTHER file (seen: a demo
+            # profile.js revalidated as current after the overlay came back). Always send it fresh.
+            del self.headers['If-Modified-Since']
         super().do_GET()
 
     # One line per request in serve-access.log (the stock handler logs to stderr, which is DEVNULL
