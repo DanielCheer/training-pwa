@@ -373,6 +373,7 @@ function allWorkoutNotes(){
 function clearWorkoutNotes(days){ // called from endDay with the day tab(s) ACTUALLY trained today (not the viewed tab).
  if(!Array.isArray(days)||!days.length)return;                                  // Archives every note to dj-exlog-archive FIRST (survives a silently-failed CSV download), then empties the slots → clean boxes next session, zero data loss.
  let archive;try{archive=JSON.parse(localStorage.getItem('dj-exlog-archive')||'[]')}catch(e){archive=[]}
+ const slots=[];
  for(const dk of days){
   const pre='dj-exlog-'+dk; // this day's slots (day+sec+idx) + its section-note keys (day+sec)
   for(let i=localStorage.length-1;i>=0;i--){
@@ -380,11 +381,15 @@ function clearWorkoutNotes(days){ // called from endDay with the day tab(s) ACTU
    let arr;try{arr=JSON.parse(localStorage.getItem(k)||'[]')}catch(e){arr=[]}
    const slot=k.slice('dj-exlog-'.length);
    for(const en of arr)if(en&&typeof en.t=='string')archive.push({slot,exercise:EXLOG_SLOT_RX.test(slot)?(exNameFromExlogKey(slot,en.d)||slot):slot,date:en.d||'',note:en.t});
-   localStorage.removeItem(k); // empty the live slot
+   slots.push(k);
   }
  }
- if(archive.length>500)archive=archive.slice(-500); // bound the archive
- lsSet('dj-exlog-archive',JSON.stringify(archive));
+ const drop=Math.max(0,archive.length-NOTES_ARCHIVE_MAX); // bounded, but never silently (below)
+ if(drop)archive=archive.slice(-NOTES_ARCHIVE_MAX);
+ if(!lsSet('dj-exlog-archive',JSON.stringify(archive)))return; // archive not saved (storage full, banner shown) → keep the live notes: nothing is lost
+ slots.forEach(k=>localStorage.removeItem(k)); // only now empty the live slots
+ if(drop){console.warn('notes archive: dropped the '+drop+' oldest of '+(drop+NOTES_ARCHIVE_MAX));
+  appBanner('notes-archive','Notes archive is full ('+NOTES_ARCHIVE_MAX+'): the '+drop+' oldest archived note'+(drop==1?' was':'s were')+' removed from this phone. Each one is in the workout CSV exported the day it was archived.','warn')}
 }
 function exportWorkoutCSV(){
  const log=loadWorkoutLog();

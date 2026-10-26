@@ -121,6 +121,9 @@ const KNOWN_INBOX_TYPES=['workout','workout-update','cardio','weigh','food-move'
    another origin can't make the phone's browser post to the PC. */
 const CLIENT_HEADERS={'X-Train-Client':'1'};
 
+/* End Workout keeps at most this many archived set notes on the phone (dj-exlog-archive); trimming warns. */
+const NOTES_ARCHIVE_MAX=500;
+
 /* Rest timer length (s). */
 const TDUR=90;
 
