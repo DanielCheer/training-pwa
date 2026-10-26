@@ -96,10 +96,30 @@ def lock_live(path):
     return isinstance(lk, dict) and isinstance(lk.get('staleAfter'), (int, float)) and lk['staleAfter'] > time.time()
 
 
-def load_nutrients(index_path):
-    """Nutrient keys come from index.html's NUTRIENTS config - never a hand-kept copy."""
+def config_path(app_dir):
+    """The engine config script that declares NUTRIENTS (the app's single source for nutrient keys)."""
+    return os.path.join(app_dir, 'app', 'config.js')
+
+
+def defaults_path(app_dir):
+    """The owner's estimator defaults (personal: portion habits, recipes) - private/, never committed."""
+    return os.path.join(app_dir, 'private', 'food-defaults.md')
+
+
+def load_defaults(app_dir):
+    """The defaults text, or None when the file is missing or empty (callers fail loud on None)."""
     try:
-        with open(index_path, 'r', encoding='utf-8') as f:
+        with open(defaults_path(app_dir), 'r', encoding='utf-8') as f:
+            text = f.read().strip()
+    except OSError:
+        return None
+    return text or None
+
+
+def load_nutrients(config_file):
+    """Nutrient keys come from app/config.js's NUTRIENTS config - never a hand-kept copy."""
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
             src = f.read()
     except OSError:
         return None

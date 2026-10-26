@@ -26,7 +26,7 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from food_common import (MACROS, now_iso, atomic_write, read_json, RunLock, load_nutrients, valid_num,
-                         pending_food_entries, draft_inputs, draft_work)
+                         pending_food_entries, draft_inputs, draft_work, config_path, defaults_path, load_defaults)
 
 ARGS     = [a for a in sys.argv[1:] if not a.startswith('--')]
 FLAGS    = dict(a[2:].split('=', 1) for a in sys.argv[1:] if a.startswith('--') and '=' in a)
@@ -35,8 +35,7 @@ TRIGGER  = FLAGS.get('trigger', 'push')
 DEVICE   = os.path.join(APP_DIR, 'device-logs.json')
 PREV     = os.path.join(APP_DIR, 'device-logs.prev.json')
 SHARED   = os.path.join(APP_DIR, 'shared-log.json')
-INDEX    = os.path.join(APP_DIR, 'index.html')
-DEFAULTS = os.path.join(APP_DIR, 'food-defaults.md')
+CONFIG   = config_path(APP_DIR)   # app/config.js: NUTRIENTS
 STATE    = os.path.join(APP_DIR, 'draft-state.json')
 LOG      = os.path.join(APP_DIR, 'draft.log')
 LOCK     = os.path.join(APP_DIR, 'draft.lock')
@@ -54,7 +53,7 @@ ATWATER_TOL = 0.25          # 4p+4c+9f may differ from kcal by 25% (fibre, alcoh
 PRUNE_DAYS  = 14
 LOCK_STALE_S = DRAFT_HTTP_TIMEOUT_S + 120   # refreshed after every meal, so a long batch never looks stale
 TRANSIENT = {'ollama-down', 'timeout', 'http-error'}
-OK_RESULTS = ('drafted', 'empty', 'nothing-ready', 'nothing-usable')   # mirrors DRAFT_OK in index.html
+OK_RESULTS = ('drafted', 'empty', 'nothing-ready', 'nothing-usable')   # mirrors DRAFT_OK in app/config.js
 T0 = time.time()
 
 
@@ -290,19 +289,15 @@ def one_pass(st, defaults, nutrients):
 def main():
     if os.path.exists(OFF):
         return 0
-    nutrients = load_nutrients(INDEX)
+    nutrients = load_nutrients(CONFIG)
     st = load_state()
     if not nutrients:
-        log('ERROR: NUTRIENTS config not found in index.html')
-        save_state(st, 'config-error', error='NUTRIENTS not found in index.html'); return 1
-    try:
-        with open(DEFAULTS, 'r', encoding='utf-8') as f:
-            defaults = f.read().strip()
-    except OSError:
-        defaults = ''
+        log('ERROR: NUTRIENTS config not found in ' + CONFIG)
+        save_state(st, 'config-error', error='NUTRIENTS not found in app/config.js'); return 1
+    defaults = load_defaults(APP_DIR)
     if not defaults:
-        log('ERROR: food-defaults.md missing/empty')
-        save_state(st, 'config-error', error='food-defaults.md missing'); return 1
+        log('ERROR: estimator defaults missing/empty: ' + defaults_path(APP_DIR))
+        save_state(st, 'config-error', error='private/food-defaults.md missing'); return 1
     while True:
         try: os.unlink(POKE)
         except OSError: pass

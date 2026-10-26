@@ -24,7 +24,8 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from food_common import (MACROS, now_iso, atomic_write as _atomic_write, read_json, RunLock,
-                         load_nutrients as _load_nutrients, valid_num, pending_food_entries)
+                         load_nutrients as _load_nutrients, valid_num, pending_food_entries,
+                         config_path, defaults_path, load_defaults)
 
 ARGS       = [a for a in sys.argv[1:] if not a.startswith('--')]
 FLAGS      = dict(a[2:].split('=', 1) for a in sys.argv[1:] if a.startswith('--') and '=' in a)
@@ -33,8 +34,7 @@ TRIGGER    = FLAGS.get('trigger', 'task')
 DEVICE     = os.path.join(APP_DIR, 'device-logs.json')
 PREV       = os.path.join(APP_DIR, 'device-logs.prev.json')
 SHARED     = os.path.join(APP_DIR, 'shared-log.json')
-INDEX      = os.path.join(APP_DIR, 'index.html')
-DEFAULTS   = os.path.join(APP_DIR, 'food-defaults.md')
+CONFIG     = config_path(APP_DIR)        # app/config.js: NUTRIENTS
 LOG        = os.path.join(APP_DIR, 'autofill.log')
 STATE      = os.path.join(APP_DIR, 'autofill-state.json')
 LOCK       = os.path.join(APP_DIR, 'autofill.lock')
@@ -71,7 +71,7 @@ LOCKER = RunLock(LOCK, LOCK_STALE_S, TRIGGER, log)
 
 
 def load_nutrients():
-    return _load_nutrients(INDEX)
+    return _load_nutrients(CONFIG)
 
 
 def find_claude():
@@ -148,16 +148,12 @@ def main():
 
     nutrients = load_nutrients()
     if not nutrients:
-        log('ERROR: NUTRIENTS config not found in index.html')
-        write_state('config-error', error='NUTRIENTS not found in index.html'); return 1
-    try:
-        with open(DEFAULTS, 'r', encoding='utf-8') as f:
-            defaults = f.read().strip()
-    except OSError:
-        defaults = ''
+        log('ERROR: NUTRIENTS config not found in ' + CONFIG)
+        write_state('config-error', error='NUTRIENTS not found in app/config.js'); return 1
+    defaults = load_defaults(APP_DIR)
     if not defaults:
-        log('ERROR: food-defaults.md missing/empty')
-        write_state('config-error', error='food-defaults.md missing'); return 1
+        log('ERROR: estimator defaults missing/empty: ' + defaults_path(APP_DIR))
+        write_state('config-error', error='private/food-defaults.md missing'); return 1
 
     dev = read_json(DEVICE)
     if not isinstance(dev, dict) or 'ls' not in dev:
