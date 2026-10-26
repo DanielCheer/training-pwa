@@ -32,6 +32,7 @@ nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;st
 .sbt{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
 .sbg{height:5px;background:var(--dim);border-radius:3px}
 .sbf{height:100%;border-radius:3px}
+.gsrc{color:var(--dim);font-size:11px}/* where a goal bar's number came from (weigh-in date / scan date) */
 
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mini{background:var(--card2);border-radius:10px;padding:11px 12px}

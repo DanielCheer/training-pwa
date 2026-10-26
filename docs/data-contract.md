@@ -38,7 +38,7 @@ same rule (`node harness/harness.js`, or `--private DIR`, or `--demo` to ignore 
 
 | Global | Shape | Used for |
 |---|---|---|
-| `GOAL` | `{bw, bfPct}` | goal text in the phase descriptions (`GOAL_STR` is derived from it here) |
+| `GOAL` | `{bw, bfPct}` | goal text in the phase descriptions (`GOAL_STR` is derived from it here) and the Goal card's targets (lean-mass goal = `bw × (1 − bfPct/100)`) |
 | `STACK` | `[[icon, name, text], …]` | Fuel tab: supplement stack |
 | `APT` | `[[heading, text], …]` | Fuel tab: weekly protocol card (title = `PROFILE.aptTitle`) |
 | `DAY_TARGETS` | `{kcal:[lo,hi], p:[lo,hi], c:[lo,hi], f:[lo,hi]}` | Log bars, day verdict, Fuel targets |
@@ -49,10 +49,15 @@ same rule (`node harness/harness.js`, or `--private DIR`, or `--demo` to ignore 
 
 `PROFILE` fields (strings may contain inline HTML; they are the owner's own text):
 `name`, `title` (page title + Home heading), `shortName` (home-screen label), `eyebrow`, `tz` (named in the
-Meal History roll-over line), `mealPlaceholder`, `goal:{title, bars:[{label,val,rest,pct,col}], note}`,
-`scan:{date, rows:[[label, value, [flagText, 'lo'|'ok'|'hi']?]], note}`, `aptTitle`, `mealTiming`,
+Meal History roll-over line), `mealPlaceholder`, `goal:{title, bfNote?, note}`,
+`scan:{date, bw, bfPct, lean, rows:[[label, value, [flagText, 'lo'|'ok'|'hi']?]], note}`, `aptTitle`, `mealTiming`,
 `sampleDay:{title, intro, items:[{n,d,kcal,p}], total, note}`, `shakes:{title, paras:[…], warn}`,
 `cardioRules`.
+
+The Goal card's bars are derived, never typed in: bodyweight from the latest `dj-bw-log` weigh-in (the scan's
+`bw` until there is one), lean mass and body fat from the scan's numbers, all measured against `GOAL`
+(`goal.bfNote` is appended to the body-fat goal). The demo keeps the scan numbers in one `SCAN` constant
+that both `scan` and its first rows read, so the card and the bars can't disagree.
 
 `SERVER=null` is a static checkout (the public demo): no phone→PC push, no shared-log inbox, no
 auto-fill, no drafts, no photo upload; the Log tab's status strip says so. Network paths additionally need

@@ -20,6 +20,7 @@ function editBW(i){
  localStorage.setItem('dj-bw-log',JSON.stringify(entries));
  renderBW();schedulePush()}
 function renderBW(){
+ renderGoalCard(); // the Goal card's bodyweight bar follows the latest weigh-in
  const el=$("bwList");if(!el)return;
  const entries=loadBW();
  el.innerHTML=entries.length?entries.map((e,i)=>{

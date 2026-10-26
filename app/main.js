@@ -8,9 +8,7 @@ function renderProfileCards(){
  document.title=P.title;
  const meta=document.querySelector('meta[name="apple-mobile-web-app-title"]');if(meta)meta.setAttribute('content',P.shortName);
  set("heroEyebrow",P.eyebrow);set("heroTitle",P.title);
- set("goalCard",`<div class="stitle" style="color:var(--or)">${P.goal.title}</div>`+
-  P.goal.bars.map(b=>`<div class="sb"><div class="sbt"><span style="color:var(--mu)">${b.label}</span><span><b style="color:${b.col}">${b.val}</b><span style="color:var(--mu)">${b.rest}</span></span></div><div class="sbg"><div class="sbf" style="width:${b.pct}%;background:${b.col}"></div></div></div>`).join('')+
-  `<div class="small">${P.goal.note}</div>`);
+ renderGoalCard();
  set("scanCard",`<div class="stitle" style="color:var(--cy)">Starting Stats — Scan ${P.scan.date}</div><div class="grid2">`+
   P.scan.rows.map(([l,v,f])=>`<div class="mini"><div class="l">${l}</div><div class="v">${v}${f?` <span class="flag" style="${FLAG_STY[f[1]]}">${f[0]}</span>`:''}</div></div>`).join('')+
   `</div><div class="small" style="margin-top:9px">${P.scan.note}</div>`);
@@ -23,6 +21,24 @@ function renderProfileCards(){
  set("shakesCard",`<div class="stitle" style="color:var(--gr)">${K.title}</div>`+K.paras.map(t=>`<div class="small" style="margin-bottom:8px">${t}</div>`).join('')+(K.warn?`<div class="why" style="border-color:var(--rd)">${K.warn}</div>`:''));
  const mt=$("mealText");if(mt)mt.placeholder=P.mealPlaceholder;
  const tz=$("tzLabel");if(tz)tz.textContent=P.tz}
+/* Goal card — three progress bars toward GOAL, derived (never typed in): bodyweight from the LATEST
+   weigh-in in dj-bw-log (falls back to the scan until there is one), lean mass and body fat from the
+   last scan (PROFILE.scan), each labelled with where its number came from. Progress = the nearer of
+   now/goal over the farther one, so it reads right for a gain and a cut alike. Re-rendered by
+   renderBW() whenever the weigh-in log changes. */
+function latestWeighIn(){return loadBW().filter(e=>e&&/^\d{4}-\d{2}-\d{2}$/.test(e.d)&&typeof e.w=='number'&&isFinite(e.w)&&e.w>0).reduce((b,e)=>!b||e.d>b.d?e:b,null)}
+function goalBars(){
+ const S=PROFILE.scan,bw=latestWeighIn(),w=bw?bw.w:S.bw,leanGoal=rnd1(GOAL.bw*(1-GOAL.bfPct/100));
+ const pct=(a,b)=>Math.round(Math.min(a,b)/Math.max(a,b)*100),scan='scan '+S.date;
+ return [{label:'Weight',src:bw?fmtHistDate(bw.d)+' weigh-in':scan,val:w.toFixed(1),rest:' / '+GOAL.bw+' lbs',pct:pct(w,GOAL.bw),col:'var(--or)'},
+  {label:'Lean mass',src:scan,val:S.lean.toFixed(1),rest:' / '+leanGoal+' lbs',pct:pct(S.lean,leanGoal),col:'var(--cy)'},
+  {label:'Body fat',src:scan,val:S.bfPct.toFixed(1)+'%',rest:' → '+GOAL.bfPct+'%'+(PROFILE.goal.bfNote||''),pct:pct(S.bfPct,GOAL.bfPct),col:'var(--gr)'}]}
+function renderGoalCard(){
+ const el=$("goalCard");if(!el)return;
+ el.innerHTML=`<div class="stitle" style="color:var(--or)">${PROFILE.goal.title}</div>`+
+  goalBars().map(b=>`<div class="sb"><div class="sbt"><span style="color:var(--mu)">${b.label}<span class="gsrc"> · ${b.src}</span></span><span><b style="color:${b.col}">${b.val}</b><span style="color:var(--mu)">${b.rest}</span></span></div><div class="sbg"><div class="sbf" style="width:${b.pct}%;background:${b.col}"></div></div></div>`).join('')+
+  `<div class="small">${PROFILE.goal.note}</div>`;
+ el.querySelectorAll('.js-season').forEach(s=>s.textContent=SEASON_STR)}
 renderProfileCards();
 
 /* WHY + FUEL render */

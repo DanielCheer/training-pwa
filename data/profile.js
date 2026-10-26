@@ -36,6 +36,10 @@ const FOODS=[
 ["Olive oil, 1 tbsp",119,0,0,13.5,0,0,2]
 ];
 
+/* The last body-composition scan — the Goal card's lean-mass and body-fat bars read these numbers
+   (the bodyweight bar reads the latest weigh-in instead), and the scan card's first rows show them. */
+const SCAN={date:"Week 1",bw:165.0,bfPct:18.0,lean:135.3};
+
 /* Branding + the personal Home/Fuel/Log cards (renderProfileCards()). Strings may carry inline HTML. */
 const PROFILE={
  name:"Alex",
@@ -45,14 +49,11 @@ const PROFILE={
  tz:"local",
  mealPlaceholder:"What did you eat? e.g. “chicken rice bowl”, “2 eggs + toast” (optional with a photo)",
  goal:{title:"The Goal — Honest Math",
-  bars:[{label:"Weight",val:"165.0",rest:" / 175 lbs",pct:94,col:"var(--or)"},
-   {label:"Lean mass",val:"135.3",rest:" / 154 lbs",pct:88,col:"var(--cy)"},
-   {label:"Body fat",val:"18.0%",rest:" → 12%",pct:67,col:"var(--gr)"}],
   note:"175 lbs @ 12% = <b style=\"color:var(--tx)\">154 lbs lean mass</b> — about +19 lbs of muscle while trimming a little fat. That's a multi-year project, so this block's job is the first chunk of it: get stronger on the big lifts by <span class=\"js-season\"></span> and gain slowly enough that the waistline holds."},
- scan:{date:"Week 1",
-  rows:[["Weight","165.0 lb"],
-   ["Body fat","18.0%",["above goal","hi"]],
-   ["Lean body mass","135.3 lb"],
+ scan:{...SCAN,
+  rows:[["Weight",SCAN.bw.toFixed(1)+" lb"],
+   ["Body fat",SCAN.bfPct.toFixed(1)+"%",["above goal","hi"]],
+   ["Lean body mass",SCAN.lean.toFixed(1)+" lb"],
    ["BMR / TEE","1720 / 2600"],
    ["Squat 5RM","185 lb"],
    ["Bench 5RM","135 lb",["lagging","lo"]],
