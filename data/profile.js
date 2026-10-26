@@ -46,6 +46,7 @@ const PROFILE={
  title:"Alex · Strength Block",
  shortName:"Training",
  eyebrow:"Demo profile → Programming",
+ seasonWords:{to:"to test day",during:"after test day"}, // the hero line around SEASON (data/program.js)
  tz:"local",
  mealPlaceholder:"What did you eat? e.g. “chicken rice bowl”, “2 eggs + toast” (optional with a photo)",
  goal:{title:"The Goal — Honest Math",

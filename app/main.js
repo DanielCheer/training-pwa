@@ -94,11 +94,12 @@ if(HAS_SERVER){
  $("cd").textContent=heroStatus(new Date());})();
 /* The hero's status line. Before SEASON with the calendar running: the countdown. Once the season has
    started, or while the program HOLDS at a phase, a countdown is meaningless (it would read "0 days to
-   tip-off" forever) — say where the program actually is instead. All derived from data/program.js. */
+   tip-off" forever) — say where the program actually is instead. Dates from data/program.js; the words
+   for the SEASON date from PROFILE.seasonWords (optional: {to, during}). */
 function heroStatus(now){
- const held=HOLD_AT_PHASE!=null&&PHASES[HOLD_AT_PHASE];
- if(!held&&now<SEASON){const d=Math.ceil((SEASON-now)/864e5);return d+(d===1?" day":" days")+" to tip-off"}
- const week=now>=SEASON?"in-season · week "+(Math.floor((now-SEASON)/(7*864e5))+1):"week "+(wkNow+1);
+ const held=HOLD_AT_PHASE!=null&&PHASES[HOLD_AT_PHASE],W=PROFILE.seasonWords||{};
+ if(!held&&now<SEASON){const d=Math.ceil((SEASON-now)/864e5);return d+(d===1?" day ":" days ")+(W.to||"to the season")}
+ const week=now>=SEASON?(W.during||"in-season")+" · week "+(Math.floor((now-SEASON)/(7*864e5))+1):"week "+(wkNow+1);
  return week+(held?" · holding at "+held.n.split(" · ").pop()+" until "+GOAL_STR:" · block complete")}
 
 /* Rest timer — timestamp-based (not tick-decrement) so it self-corrects after any

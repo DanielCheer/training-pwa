@@ -48,7 +48,7 @@ same rule (`node harness/harness.js`, or `--private DIR`, or `--demo` to ignore 
 | `SERVER` | `{push, inbox, autofill, drafts, photos}` or `null` | which companion-server features exist |
 
 `PROFILE` fields (strings may contain inline HTML; they are the owner's own text):
-`name`, `title` (page title + Home heading), `shortName` (home-screen label), `eyebrow`, `tz` (named in the
+`name`, `title` (page title + Home heading), `shortName` (home-screen label), `eyebrow`, `seasonWords?:{to, during}` (the Home hero's words around `SEASON`; default "to the season" / "in-season"), `tz` (named in the
 Meal History roll-over line), `mealPlaceholder`, `goal:{title, bfNote?, note}`,
 `scan:{date, bw, bfPct, lean, rows:[[label, value, [flagText, 'lo'|'ok'|'hi']?]], note}`, `aptTitle`, `mealTiming`,
 `sampleDay:{title, intro, items:[{n,d,kcal,p,c,f}], note}`, `shakes:{title, paras:[…], warn}`,
