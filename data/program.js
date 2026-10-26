@@ -22,10 +22,11 @@ const BUILD_START=PHW.slice(0,BUILD_PHASE<0?0:BUILD_PHASE).reduce((a,b)=>a+b,0);
 const HOLD_AT_PHASE=null; // null = follow the calendar through every phase (an index here would hold the program in that phase)
 const HOLD_END_WEEK=HOLD_AT_PHASE==null?null:PHW.slice(0,HOLD_AT_PHASE+1).reduce((a,b)=>a+b,0)-1;
 /* Phase date ranges + week labels, generated from START + PHW. */
-(function(){let w=0;PHASES.forEach((p,i)=>{
- const s=new Date(START.getTime()+w*7*864e5);
- let e=new Date(START.getTime()+((w+PHW[i])*7-1)*864e5);
- if(i==PHASES.length-1&&e>=SEASON)e=new Date(SEASON.getTime()-864e5);
+(function(){let w=0;const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n); // calendar days: a fixed 864e5-ms day lands on the previous date across a DST change
+ PHASES.forEach((p,i)=>{
+ const s=addDays(START,w*7);
+ let e=addDays(START,(w+PHW[i])*7-1);
+ if(i==PHASES.length-1&&e>=SEASON)e=addDays(SEASON,-1);
  const range=s.getMonth()==e.getMonth()?fmtMD(s)+'–'+e.getDate():fmtMD(s)+' – '+fmtMD(e);
  p.d=range+' (Wk '+(w+1)+(PHW[i]>1?'–'+(w+PHW[i]):'')+')';
  if(i===HOLD_AT_PHASE)p.d='from '+fmtMD(s)+' · HOLDING until '+GOAL_STR;
