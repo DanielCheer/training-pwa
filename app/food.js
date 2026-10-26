@@ -271,7 +271,7 @@ function queueFoodPhoto(id,date,file){
  .catch(()=>alert('Could not read that image.'))}
 function uploadPhotoBlob(id,date,blob){
  if(!serverHas('photos'))return Promise.resolve(false);
- return fetch('/upload-food?date='+date+'&id='+encodeURIComponent(id),{method:'POST',headers:{'Content-Type':blob.type||'image/jpeg',...CLIENT_HEADERS},body:blob})
+ return fetch('upload-food?date='+date+'&id='+encodeURIComponent(id),{method:'POST',headers:{'Content-Type':blob.type||'image/jpeg',...CLIENT_HEADERS},body:blob})
   .then(r=>r.ok?r.json():null).then(d=>{
    if(!(d&&d.ok&&d.saved))return false;
    patchFoodEntry(date,id,e=>{e.photo=d.saved;delete e.photoQueued});

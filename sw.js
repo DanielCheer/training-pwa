@@ -57,8 +57,8 @@ self.addEventListener('fetch', (e) => {
   if (e.request.url.includes('shared-log.json')) return; // network-only, DJ's phone must see new entries the moment they're added
   if (e.request.url.includes('server-synced.json')) return; // network-only, same reason - stale synced-ids would cause pointless re-uploads
   if (e.request.url.includes('/videos/')) return; // saved reels: 30-100MB each, never cache - and range requests must hit the real server
-  if (e.request.url.includes('autofill-state.json')) return;
-  if (e.request.url.includes('draft-state.json')) return; // network-only: drafts appear the moment the PC writes them // network-only: the status strip must show the REAL last auto-fill run, never a cached one
+  if (e.request.url.includes('autofill-state.json')) return; // network-only: the status strip must show the REAL last auto-fill run, never a cached one
+  if (e.request.url.includes('draft-state.json')) return; // network-only: drafts appear the moment the PC writes them
   if (e.request.url.includes('/food-photos/')) return; // meal photos: network-only, never bloat the shell cache (thumbnails just hide offline)
 
   e.respondWith(

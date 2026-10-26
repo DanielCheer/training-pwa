@@ -60,3 +60,18 @@ def test_overlayable_paths_are_shell_files_the_index_loads():
     loaded = set(scripts) | set(links)
     assert serve.OVERLAYABLE <= loaded, 'every overlayable data file is actually loaded by index.html'
     assert {s for s in scripts if s.startswith('data/')} <= serve.OVERLAYABLE, 'every data/*.js the page loads can be overlaid'
+
+
+def test_app_urls_are_relative_so_the_shell_works_from_a_subpath():
+    """The demo is served from /<repo>/ on GitHub Pages: a URL starting with "/" would leave that scope
+    (a 404 there, and outside the service worker's scope). Every fetch, sendBeacon and SW registration
+    in app/*.js names its target relative to the page."""
+    bad, seen = [], []
+    for f in sorted((REPO / 'app').glob('*.js')):
+        src = f.read_text(encoding='utf-8')
+        for m in re.finditer(r"""\b(?:fetch|sendBeacon|register)\(\s*(['"`])([^'"`]*)\1""", src):
+            seen.append(m.group(2))
+            if m.group(2).startswith('/') or '://' in m.group(2):
+                bad.append('%s: %s' % (f.name, m.group(2)))
+    assert {'sw.js', 'push-logs', 'shared-log.json'} <= set(seen), "the scan found the app's URLs: %s" % seen
+    assert not bad, 'absolute URLs in the app: %s' % bad
