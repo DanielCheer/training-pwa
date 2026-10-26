@@ -15,6 +15,8 @@ App:
 - The demo persona has the gym-session picker (its four lifting days).
 - Removed dead code: the Tuesday full/short toggle (the device push payload is now `v: 2`, without `tueMode`), the `alts` target branch and one unused diagram figure. A harness check now proves every diagram key resolves.
 
+Tooling: `tools/audit-public.sh` (tracked files vs an expected list, the private PII patterns over every commit and message, noreply identities); harness sections for diagram keys, the Monday rotation, storage-full, the log memo, the notes archive and the session picker; a pytest check that every app URL is relative (the Pages demo runs from a subpath).
+
 ## v121
 
 App:
