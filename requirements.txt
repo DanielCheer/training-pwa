@@ -1,0 +1,3 @@
+# Runtime: Python 3.10+ and its standard library only - nothing to install for serve.py, food_common.py,
+# autofill-food.py, server-watchdog.py or draft-food.py's text meals.
+# Optional: Pillow, imported only when draft-food.py drafts a PHOTO meal (pip install Pillow).
