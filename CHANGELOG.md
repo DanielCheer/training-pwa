@@ -2,6 +2,16 @@
 
 Release notes for each `sw.js` VERSION.
 
+## v122
+
+App:
+- A full phone storage now fails loud: every write goes through `lsSet()`, which shows a persistent banner naming what was not saved instead of throwing out of the middle of a save (or, in five places, swallowing it).
+- End Workout empties the trained day's note slots only after the notes archive has saved, so a full store can no longer lose them. The archive stays capped at 500 notes, and trimming it shows a warning with the count.
+- The Monday rotation resolves per date in `dayObj()`: program data is never written at runtime, and a past Monday reads back as its own week's variant. One `progWeekOf()` measures to the day's noon, so a DST change can't shift a week boundary by an hour.
+- The workout and food logs are parsed once per render (memoized, invalidated on write).
+- Faint `--dim` text clears 3:1 on both card backgrounds (#536F7E).
+- Removed dead code: the Tuesday full/short toggle (the device push payload is now `v: 2`, without `tueMode`), the `alts` target branch and one unused diagram figure. A harness check now proves every diagram key resolves.
+
 ## v121
 
 App:
