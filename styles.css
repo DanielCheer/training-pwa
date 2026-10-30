@@ -5,7 +5,7 @@
   --track:#2A4454; /* empty bar/timeline track (not text) */
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{background:var(--bg);color:var(--tx);font-family:-apple-system,system-ui,sans-serif;overscroll-behavior-y:contain}
+html,body{background:var(--bg);color:var(--tx);font-family:-apple-system,system-ui,sans-serif;overscroll-behavior-y:contain;touch-action:manipulation}
 body{padding-bottom:84px;max-width:520px;margin:0 auto}
 .pg{display:none;padding:calc(14px + env(safe-area-inset-top)) 14px 20px}
 .pg.on{display:block}

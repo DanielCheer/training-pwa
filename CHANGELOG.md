@@ -2,6 +2,11 @@
 
 Release notes for each `sw.js` VERSION.
 
+## v123
+
+App:
+- Double-tap no longer zooms the page (`touch-action: manipulation`); pinch-zoom still works.
+
 ## v122
 
 App:

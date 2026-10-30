@@ -3,7 +3,7 @@
    Strategy: cache-first for the shell, network refresh in the background.
    BUMP `VERSION` on every deploy or clients keep serving the old shell. */
 
-const VERSION = 'dj-train-v122'; // release history: CHANGELOG.md
+const VERSION = 'dj-train-v123'; // release history: CHANGELOG.md
 const SHELL = [
   './',
   './index.html',
