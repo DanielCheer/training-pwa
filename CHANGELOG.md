@@ -2,6 +2,11 @@
 
 Release notes for each `sw.js` VERSION.
 
+## v124
+App:
+- A picked food photo shows on its meal row right away, before it finishes processing.
+- Meal History shows each meal's photo thumbnail (tap to enlarge) instead of a camera icon.
+
 ## v123
 
 App:

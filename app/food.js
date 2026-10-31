@@ -162,7 +162,7 @@ function renderFoodLog(){
   const tstyle='width:42px;height:42px;border-radius:8px;object-fit:cover;margin-right:9px;flex:none;cursor:pointer';
   const thumb=e.photo
    ?`<img src="${e.photo}" onerror="this.style.display='none'" onclick="event.stopPropagation();playImg('${e.photo}')" style="${tstyle}">`
-   :e.photoQueued
+   :e.photoQueued||_localThumbs.has(e.id)
    ?`<img data-qid="${e.id}" alt="⏳" style="${tstyle};background:var(--card2);border:1px dashed var(--ye)">`
    :`<button onclick="event.stopPropagation();pickFoodPhoto('${e.id}')" title="Add a photo" aria-label="Add a photo" style="width:42px;height:42px;border-radius:8px;background:var(--card2);border:1px solid var(--bd);color:var(--mu);font-size:17px;margin-right:9px;flex:none;padding:0">📷</button>`;
   const ds=e.pending&&!sameDraftInputs(e)?dskip(e):null;
@@ -184,6 +184,7 @@ function renderFoodLog(){
 /* Meal history — every day you've logged, newest first, each day collapsible with its
    daily total. Reuses loadAllFoodLog() (the same all-days scan the CSV export uses).
    Today's meals live in the "Logged Today" card above, so they're excluded here. */
+const HIST_THUMB='width:34px;height:34px;border-radius:6px;object-fit:cover;flex:none;cursor:pointer;background:var(--card2)';
 function fmtHistDate(d){try{return new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}catch(e){return d}}
 function renderMealHistory(){
  const el=$("mealHistory");if(!el)return;
@@ -194,9 +195,10 @@ function renderMealHistory(){
  el.innerHTML=dates.map(d=>{
   const items=byDate[d];
   const t=dayFoodTotals(d); // same pending-excluding sum as the Logged Today card
-  const rows=items.map(e=>`<div class="small" style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-top:1px solid var(--bd)"><span style="flex:1">${e.photo||e.photoQueued?'📷 ':''}${escHtml(e.n||'Photo meal')}</span><span style="color:${e.pending?'var(--ye)':'var(--mu)'};white-space:nowrap">${e.pending?(sameDraftInputs(e)?`⏳ ≈${Math.round(e.draft.kcal)} draft`:'⏳ pending'):`${Math.round(e.kcal)} · ${Math.round(e.p)}P ${Math.round(e.c)}C ${Math.round(e.f)}F`}</span></div>`).join('');
+  const rows=items.map(e=>`<div class="small" style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-top:1px solid var(--bd)"><span style="flex:1;display:flex;align-items:center;gap:8px">${e.photo?`<img src="${e.photo}" alt="" onerror="this.style.display='none'" onclick="playImg('${e.photo}')" style="${HIST_THUMB}">`:e.photoQueued?`<img data-qid="${e.id}" alt="" style="${HIST_THUMB};border:1px dashed var(--ye)">`:''}<span>${escHtml(e.n||'Photo meal')}</span></span><span style="color:${e.pending?'var(--ye)':'var(--mu)'};white-space:nowrap">${e.pending?(sameDraftInputs(e)?`⏳ ≈${Math.round(e.draft.kcal)} draft`:'⏳ pending'):`${Math.round(e.kcal)} · ${Math.round(e.p)}P ${Math.round(e.c)}C ${Math.round(e.f)}F`}</span></div>`).join('');
   return `<details style="margin-bottom:8px;border:1px solid var(--bd);border-radius:10px;padding:9px 11px;background:var(--card2)"><summary style="cursor:pointer;font-weight:700;font-size:13.5px;display:flex;justify-content:space-between;align-items:center;gap:8px;list-style:none"><span>${fmtHistDate(d)} <span style="color:var(--mu);font-weight:600;font-size:11px">${d}</span></span><span style="font-size:12px;color:var(--or);font-weight:800;white-space:nowrap">${localStorage.getItem('dj-day-confirmed-'+d)?'<span style="color:var(--gr)">✓ </span>':''}${Math.round(t.kcal)} kcal · ${Math.round(t.p)}g P${t.pend?` <span style="color:var(--ye)">(${t.pend} pending${t.draft.n?' · ≈'+Math.round(t.draft.kcal)+' draft':''})</span>`:''}</span></summary><div style="margin-top:6px">${rows}</div></details>`;
  }).join('');
+ hydrateQueuedThumbs(el);
 }
 /* Meal log (v116) — capture now, count once a day. "Log a Meal" saves a PENDING entry
    ({pending:true, at, kcal/p/c/f:0}) the moment DJ taps — text, photo, or both, online or not.
@@ -212,6 +214,11 @@ function renderMealHistory(){
    network paths also need an http(s) origin: file:// has no server behind it. Computed once. */
 const HAS_SERVER=!!SERVER&&location.protocol.startsWith('http');
 function serverHas(f){return HAS_SERVER&&!!SERVER[f]}
+/* v124: object URLs for photos picked this session, keyed by entry id, so a row shows its own photo
+   the moment it is picked (before the downscale + IndexedDB write mark it photoQueued). In-memory only. */
+const _localThumbs=new Map();
+function rememberThumb(id,file){try{_localThumbs.set(id,URL.createObjectURL(file))}catch(e){}}
+function forgetThumb(id){const u=_localThumbs.get(id);if(u){URL.revokeObjectURL(u);_localThumbs.delete(id);renderFoodLog()}} // the photo never made it in
 let _photoTarget=null; // null = new meal from the Log-a-Meal form; an entry id = add a photo to that row
 function pickFoodPhoto(id){_photoTarget=id;const inp=$("foodPhotoInput");if(inp){inp.value="";inp.click()}}
 function foodLogFor(date){return lsJSON('dj-foodlog-'+date)} // memoized per render (lsJSON, app/config.js)
@@ -231,8 +238,9 @@ function logTextMeal(){
    downscaled one at a time so a big multi-pick can't spike memory on the phone. */
 async function onFoodPhotoPicked(inp){
  const files=Array.from(inp.files||[]);if(!files.length)return; // cancelled picker → nothing is created
- if(_photoTarget!=null){const id=_photoTarget;_photoTarget=null;return queueFoodPhoto(id,todayKey(),files[0])}
+ if(_photoTarget!=null){const id=_photoTarget;_photoTarget=null;rememberThumb(id,files[0]);renderFoodLog();return queueFoodPhoto(id,todayKey(),files[0])}
  const text=takeMealText(),refs=files.map((f,i)=>addPendingMeal(i===0?text:''));
+ refs.forEach((r,i)=>rememberThumb(r.id,files[i]));
  renderFoodLog();schedulePush();
  awaitDrafts();
  for(let i=0;i<files.length;i++)await queueFoodPhoto(refs[i].id,refs[i].date,files[i])}
@@ -267,8 +275,8 @@ function queueFoodPhoto(id,date,file){
  return downscaleToJpeg(file).then(blob=>
   photoQueuePut({id,date,blob,at:new Date().toISOString()})
    .then(()=>{patchFoodEntry(date,id,e=>{e.photoQueued=true});renderFoodLog();schedulePush();flushPhotoQueue()})
-   .catch(()=>uploadPhotoBlob(id,date,blob).then(ok=>{if(!ok)alert("Photo upload failed and this browser can't hold it offline — try again on wifi/tailnet.")})))
- .catch(()=>alert('Could not read that image.'))}
+   .catch(()=>uploadPhotoBlob(id,date,blob).then(ok=>{if(!ok){forgetThumb(id);alert("Photo upload failed and this browser can't hold it offline — try again on wifi/tailnet.")}})))
+ .catch(()=>{forgetThumb(id);alert('Could not read that image.')})}
 function uploadPhotoBlob(id,date,blob){
  if(!serverHas('photos'))return Promise.resolve(false);
  return fetch('upload-food?date='+date+'&id='+encodeURIComponent(id),{method:'POST',headers:{'Content-Type':blob.type||'image/jpeg',...CLIENT_HEADERS},body:blob})
@@ -292,7 +300,7 @@ function flushPhotoQueue(){ // uploads queued photos oldest-first; stops at the 
  return _flushP}
 function hydrateQueuedThumbs(el){
  if(!el||!el.querySelectorAll)return;
- el.querySelectorAll('img[data-qid]').forEach(img=>photoQueueGet(img.dataset.qid)
+ el.querySelectorAll('img[data-qid]').forEach(img=>_localThumbs.has(img.dataset.qid)?img.src=_localThumbs.get(img.dataset.qid):photoQueueGet(img.dataset.qid)
   .then(r=>{if(r&&r.blob)img.src=URL.createObjectURL(r.blob)}).catch(()=>{}))}
 
 /* Sync + auto-fill status strip and the "Count now" button. Two freshness monitors, because both
