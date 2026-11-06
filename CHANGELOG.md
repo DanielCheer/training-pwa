@@ -2,6 +2,10 @@
 
 Release notes for each `sw.js` VERSION.
 
+## v125
+App:
+- Text boxes are 16px, so tapping one on iPhone no longer zooms the page in and leaves it scrolling sideways.
+
 ## v124
 App:
 - A picked food photo shows on its meal row right away, before it finishes processing.

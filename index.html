@@ -34,7 +34,7 @@
     <div class="small" style="margin-bottom:10px">Sunday mornings, pre-gym, fasted — same conditions every time so the trend actually means something.</div>
     <div style="display:flex;gap:8px">
       <label class="vh" for="bwIn">Weigh-in (lb)</label>
-      <input type="number" id="bwIn" inputmode="decimal" step="0.1" placeholder="lbs" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;color:var(--tx);font-family:inherit;font-size:15px;font-weight:700">
+      <input type="number" id="bwIn" inputmode="decimal" step="0.1" placeholder="lbs" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;color:var(--tx);font-family:inherit;font-weight:700">
       <button onclick="saveBW()" style="padding:10px 18px;border-radius:8px;background:var(--or);color:#fff;font-weight:800;font-size:13.5px;white-space:nowrap">+ Save</button>
     </div>
     <div id="bwList"></div>
@@ -55,7 +55,7 @@
     <button onclick="exportWorkoutCSV()" style="width:100%;padding:11px;border-radius:10px;background:var(--cy);color:#00110F;font-weight:800;font-size:13.5px">Export CSV</button>
     <div class="small" style="margin:12px 0 6px"><b style="color:var(--tx)">Google Sheet sync</b> (optional) — paste your Apps Script Web App URL (see README for the one-time setup). "End Workout" sends anything new to it automatically.</div>
     <label class="vh" for="sheetUrlIn">Google Sheet Apps Script URL</label>
-    <input id="sheetUrlIn" placeholder="https://script.google.com/macros/s/.../exec" onchange="saveSheetUrl()" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit;font-size:12px">
+    <input id="sheetUrlIn" placeholder="https://script.google.com/macros/s/.../exec" onchange="saveSheetUrl()" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit">
   </div>
 
 
@@ -134,7 +134,7 @@
     <div class="stitle" style="color:var(--cy)">Log a Meal</div>
     <div class="small" style="margin-bottom:8px">Snap it, type it, or both. It's saved right away (even offline) and counted once a day by the auto-fill — no need to message Claude.</div>
     <label class="vh" for="mealText">What did you eat?</label>
-    <textarea id="mealText" rows="2" placeholder="" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit;font-size:14px;resize:vertical"></textarea>
+    <textarea id="mealText" rows="2" placeholder="" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit;resize:vertical"></textarea>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button onclick="pickFoodPhoto(null)" style="flex:1;padding:11px;border-radius:9px;background:var(--card2);border:1px solid var(--bd);color:var(--tx);font-weight:800;font-size:13.5px">📷 Photo</button>
       <button onclick="logTextMeal()" style="flex:1;padding:11px;border-radius:9px;background:var(--cy);color:#00110F;font-weight:800;font-size:13.5px">✓ Log it</button>
@@ -154,12 +154,12 @@
     <div id="foodPicker"></div>
     <div class="small" style="margin:12px 0 6px"><b style="color:var(--tx)">Not in the list?</b> Add it once, reuse it forever:</div>
     <label class="vh" for="cfName">Custom food name</label>
-    <input id="cfName" placeholder="Food name" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit;font-size:14px;margin-bottom:6px">
+    <input id="cfName" placeholder="Food name" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit;margin-bottom:6px">
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <label class="vh" for="cfKcal">Calories</label><input id="cfKcal" type="number" placeholder="kcal" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 6px;color:var(--tx);font-family:inherit;font-size:13px;text-align:center">
-      <label class="vh" for="cfP">Protein (g)</label><input id="cfP" type="number" placeholder="protein g" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 6px;color:var(--tx);font-family:inherit;font-size:13px;text-align:center">
-      <label class="vh" for="cfC">Carbs (g)</label><input id="cfC" type="number" placeholder="carb g" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 6px;color:var(--tx);font-family:inherit;font-size:13px;text-align:center">
-      <label class="vh" for="cfF">Fat (g)</label><input id="cfF" type="number" placeholder="fat g" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 6px;color:var(--tx);font-family:inherit;font-size:13px;text-align:center">
+      <label class="vh" for="cfKcal">Calories</label><input id="cfKcal" type="number" placeholder="kcal" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 6px;color:var(--tx);font-family:inherit;text-align:center">
+      <label class="vh" for="cfP">Protein (g)</label><input id="cfP" type="number" placeholder="protein g" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 6px;color:var(--tx);font-family:inherit;text-align:center">
+      <label class="vh" for="cfC">Carbs (g)</label><input id="cfC" type="number" placeholder="carb g" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 6px;color:var(--tx);font-family:inherit;text-align:center">
+      <label class="vh" for="cfF">Fat (g)</label><input id="cfF" type="number" placeholder="fat g" style="flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 6px;color:var(--tx);font-family:inherit;text-align:center">
     </div>
     <button onclick="addCustomFood()" style="width:100%;padding:10px;border-radius:8px;background:var(--cy);color:#00110F;font-weight:800;font-size:13px">+ Save custom food</button>
   </div>

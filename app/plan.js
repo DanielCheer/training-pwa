@@ -116,7 +116,7 @@ function renderContent(){
 function cardioSectionHtml(){return `<div class="card">
  <div class="stitle" style="color:var(--or)">Cardio &amp; Sauna</div>
  <div class="small" style="margin-bottom:8px">Enter minutes, then tap the activity.</div>
- <label class="vh" for="cardioMin">Minutes</label><input id="cardioMin" type="number" inputmode="numeric" placeholder="minutes" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit;font-size:14px;margin-bottom:8px">
+ <label class="vh" for="cardioMin">Minutes</label><input id="cardioMin" type="number" inputmode="numeric" placeholder="minutes" style="width:100%;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;color:var(--tx);font-family:inherit;margin-bottom:8px">
  <div style="display:flex;flex-wrap:wrap;gap:6px">
   <button onclick="addCardio('Stairmaster')" style="flex:1;min-width:82px;padding:9px 4px;border-radius:9px;background:#101E29;border:1px solid var(--bd);color:var(--tx);font-weight:700;font-size:12.5px">Stairmaster</button>
   <button onclick="addCardio('Sauna')" style="flex:1;min-width:66px;padding:9px 4px;border-radius:9px;background:#101E29;border:1px solid var(--bd);color:var(--tx);font-weight:700;font-size:12.5px">Sauna</button>
@@ -241,7 +241,7 @@ function renderWorkoutHistory(){
    "+ add load". "⌨ type" on the picker collapses to a plain total-lb box for the
    odd machine that prints a total. Handlers take only `id` and resolve the
    exercise via exName(id), so nothing breaks under the Monday rotation. */
-const INP_STY='flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 10px;color:var(--tx);font-family:inherit;font-size:14px';
+const INP_STY='flex:1;min-width:0;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:9px 10px;color:var(--tx);font-family:inherit';
 const BTN_STY='background:var(--gr);color:#00110F;font-weight:800;border-radius:8px;padding:9px 14px;font-size:13px;white-space:nowrap';
 function rnd1(n){return Math.round(n*10)/10}
 function repsAndSet(id){return `<label class="vh" for="setr-${id}">Reps</label><input id="setr-${id}" type="number" inputmode="numeric" placeholder="reps" style="${INP_STY}"><button onclick="addSet('${id}')" style="${BTN_STY}">+ Set</button>`}

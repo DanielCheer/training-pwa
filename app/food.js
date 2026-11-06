@@ -131,7 +131,7 @@ function renderFoodPicker(){
  el.innerHTML=allFoods().map((f,i)=>
   `<div class="logentry" style="align-items:center">
     <div style="flex:1"><div class="logtxt" style="font-weight:700;font-size:13.5px">${escHtml(f[0])}</div><div class="small">${f[1]} kcal · ${f[2]}p ${f[3]}c ${f[4]}f</div></div>
-    <label class="vh" for="fq${i}">Servings of ${escAttr(f[0])}</label><input type="number" id="fq${i}" value="1" step="0.5" style="width:44px;background:var(--card2);border:1px solid var(--bd);border-radius:6px;padding:6px 2px;color:var(--tx);text-align:center;margin-right:6px;font-size:13px">
+    <label class="vh" for="fq${i}">Servings of ${escAttr(f[0])}</label><input type="number" id="fq${i}" value="1" step="0.5" style="width:44px;background:var(--card2);border:1px solid var(--bd);border-radius:6px;padding:6px 2px;color:var(--tx);text-align:center;margin-right:6px">
     <button onclick="addFood(${i})" style="background:var(--gr);color:#00110F;font-weight:800;border-radius:6px;padding:7px 12px;font-size:12px;white-space:nowrap">Add</button>
    </div>`
  ).join("")}

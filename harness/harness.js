@@ -271,13 +271,18 @@ function undoA11y(h){return String(h)
  .replace(/<label class="vh" for="[^"]*">[^<]*<\/label>\s*/g,'')
  .replace(/ aria-label="(?:Delete set|Delete note|Delete weigh-in|Delete entry|Delete meal|Add a photo|Rest timer|Meal photos)"/g,'')}
 
+/* v125: form controls take their font size from styles.css (16px, so iOS doesn't zoom on focus), not
+   inline. Comparisons against the pre-v125 baselines drop inline font sizes from controls on BOTH
+   sides, so that move is the only thing excused. */
+function dropControlFontSize(h){return String(h).replace(/<(input|textarea|select)\b[^>]*>/g,t=>t.replace(/;?font-size:[0-9.]+px/g,''))}
+
 let FAIL=0;
 function ok(cond,msg){if(!cond){FAIL++;console.log('  ✗ '+msg)}else{console.log('  ✓ '+msg)}}
 const has=(h,s)=>String(h||'').includes(s);
 
 /* Sections: public first (sorted by file name), then private when the overlay is active. A section
    that throws is a failure, not a crash — the remaining sections still run. */
-const H={run,ok,has,undoA11y,assemble,extract,MOD,ORIG,fs,path,DIR,PRIV,OVERLAY,REBASELINE};
+const H={run,ok,has,undoA11y,dropControlFontSize,assemble,extract,MOD,ORIG,fs,path,DIR,PRIV,OVERLAY,REBASELINE};
 /* A section may be async (return a promise) when it must let the app's fetch/promise chains settle —
    run(...).ctx is the sandbox to read afterwards. Sections still run one at a time, in order. */
 async function runSections(dir,label){
